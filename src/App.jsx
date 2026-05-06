@@ -9,6 +9,14 @@ import Settings from './pages/Settings'
 import './styles/globals.css'
 
 function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
+  )
+}
+
+function AppContent() {
   const { isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
@@ -23,68 +31,66 @@ function App() {
   }
 
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route 
-          path="/login" 
-          element={isAuthenticated ? <Navigate to="/chat" replace /> : <Login />} 
-        />
-        
-        {/* Protected Routes */}
-        <Route 
-          path="/chat" 
-          element={
-            <ProtectedRoute>
-              <Chat />
-            </ProtectedRoute>
-          } 
-        />
-        
-        <Route 
-          path="/notes" 
-          element={
-            <ProtectedRoute>
-              <Notes />
-            </ProtectedRoute>
-          } 
-        />
-        
-        <Route 
-          path="/explorer" 
-          element={
-            <ProtectedRoute>
-              <Explorer />
-            </ProtectedRoute>
-          } 
-        />
-        
-        <Route 
-          path="/settings" 
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Root redirect */}
-        <Route 
-          path="/" 
-          element={
-            <Navigate to={isAuthenticated ? "/chat" : "/login"} replace />
-          } 
-        />
-        
-        {/* Catch all route */}
-        <Route 
-          path="*" 
-          element={
-            <Navigate to={isAuthenticated ? "/chat" : "/login"} replace />
-          } 
-        />
-      </Routes>
-    </Router>
+    <Routes>
+      {/* Public Routes */}
+      <Route 
+        path="/login" 
+        element={isAuthenticated ? <Navigate to="/chat" replace /> : <Login />} 
+      />
+      
+      {/* Protected Routes */}
+      <Route 
+        path="/chat" 
+        element={
+          <ProtectedRoute>
+            <Chat />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/notes" 
+        element={
+          <ProtectedRoute>
+            <Notes />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/explorer" 
+        element={
+          <ProtectedRoute>
+            <Explorer />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/settings" 
+        element={
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Root redirect */}
+      <Route 
+        path="/" 
+        element={
+          <Navigate to={isAuthenticated ? "/chat" : "/login"} replace />
+        } 
+      />
+      
+      {/* Catch all route */}
+      <Route 
+        path="*" 
+        element={
+          <Navigate to={isAuthenticated ? "/chat" : "/login"} replace />
+        } 
+      />
+    </Routes>
   )
 }
 
