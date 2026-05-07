@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
 import { THEME_PRESETS, COLOR_KEYS } from '../config/themeConfig';
 import { applyTheme } from '../lib/applyTheme';
-import { getUserId } from '../lib/storage';
+import { getUserId, setThemePreference, getThemePreference } from '../lib/storage';
 
 export const useTheme = () => {
   const [currentTheme, setCurrentTheme] = useState('light');
@@ -10,50 +9,47 @@ export const useTheme = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Load theme from Supabase on mount
-  const loadThemeFromSupabase = useCallback(async () => {
+  // Load theme on mount
+  const loadTheme = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      const userId = getUserId();
-      if (!userId) {
-        // If no user ID, use system preference or default to light
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        setCurrentTheme(systemTheme);
-        setColors(THEME_PRESETS[systemTheme]);
-        applyTheme(THEME_PRESETS[systemTheme]);
-        return;
-      }
 
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('current_theme, theme_colors')
-        .eq('user_id', userId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      let themeToUse = 'light';
-      let colorsToUse = THEME_PRESETS.light;
-
-      if (data) {
-        themeToUse = data.current_theme || 'light';
-        colorsToUse = data.theme_colors || THEME_PRESETS[themeToUse];
-      } else {
-        // Use system preference if no saved theme
-        themeToUse = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        colorsToUse = THEME_PRESETS[themeToUse];
-      }
+      // First check localStorage for saved theme
+      const savedTheme = getThemePreference();
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      const themeToUse = savedTheme || systemTheme;
+      const colorsToUse = THEME_PRESETS[themeToUse] || THEME_PRESETS.light;
 
       setCurrentTheme(themeToUse);
       setColors(colorsToUse);
       applyTheme(colorsToUse);
+
+      // Try to load from Supabase (non-blocking, won't crash if it fails)
+      const userId = getUserId();
+      if (userId) {
+        try {
+          const { supabase } = await import('../lib/supabaseClient');
+          const { data } = await supabase
+            .from('app_settings')
+            .select('current_theme, theme_colors')
+            .eq('user_id', userId)
+            .single();
+
+          if (data) {
+            const supaTheme = data.current_theme || themeToUse;
+            const supaColors = data.theme_colors || THEME_PRESETS[supaTheme];
+            setCurrentTheme(supaTheme);
+            setColors(supaColors);
+            applyTheme(supaColors);
+          }
+        } catch (supabaseErr) {
+          // Supabase not available - localStorage theme is already applied, just continue
+          console.warn('Supabase theme load skipped:', supabaseErr.message);
+        }
+      }
     } catch (err) {
       console.error('Error loading theme:', err);
-      setError(err.message);
       // Fallback to light theme
       setCurrentTheme('light');
       setColors(THEME_PRESETS.light);
@@ -63,27 +59,30 @@ export const useTheme = () => {
     }
   }, []);
 
-  // Save theme to Supabase
-  const saveThemeToSupabase = useCallback(async (themeName, customColors = null) => {
-    try {
-      const userId = getUserId();
-      if (!userId) return;
+  // Save theme (localStorage as primary, Supabase as secondary)
+  const saveTheme = useCallback(async (themeName, customColors = null) => {
+    // Always save to localStorage first
+    setThemePreference(themeName);
 
-      const colorsToSave = customColors || THEME_PRESETS[themeName];
-
-      const { error } = await supabase
-        .from('app_settings')
-        .upsert({
-          user_id: userId,
-          current_theme: themeName,
-          theme_colors: colorsToSave,
-          updated_at: new Date().toISOString()
-        });
-
-      if (error) throw error;
-    } catch (err) {
-      console.error('Error saving theme:', err);
-      setError(err.message);
+    // Try Supabase (non-blocking)
+    const userId = getUserId();
+    if (userId) {
+      try {
+        const { supabase } = await import('../lib/supabaseClient');
+        const colorsToSave = customColors || THEME_PRESETS[themeName];
+        const { error: supabaseError } = await supabase
+          .from('app_settings')
+          .upsert({
+            user_id: userId,
+            current_theme: themeName,
+            theme_colors: colorsToSave,
+            updated_at: new Date().toISOString()
+          });
+        if (supabaseError) throw supabaseError;
+      } catch (err) {
+        // Supabase save failed - localStorage is already saved, just continue
+        console.warn('Supabase theme save skipped:', err.message);
+      }
     }
   }, []);
 
@@ -98,23 +97,23 @@ export const useTheme = () => {
     setCurrentTheme(themeName);
     setColors(newColors);
     applyTheme(newColors);
-    saveThemeToSupabase(themeName);
-  }, [saveThemeToSupabase]);
+    saveTheme(themeName);
+  }, [saveTheme]);
 
   // Update custom colors
   const updateColors = useCallback((newColors) => {
     setColors(newColors);
     applyTheme(newColors);
-    saveThemeToSupabase(currentTheme, newColors);
-  }, [currentTheme, saveThemeToSupabase]);
+    saveTheme(currentTheme, newColors);
+  }, [currentTheme, saveTheme]);
 
   // Reset to default theme
   const resetToDefault = useCallback(() => {
     const defaultColors = THEME_PRESETS[currentTheme];
     setColors(defaultColors);
     applyTheme(defaultColors);
-    saveThemeToSupabase(currentTheme);
-  }, [currentTheme, saveThemeToSupabase]);
+    saveTheme(currentTheme);
+  }, [currentTheme, saveTheme]);
 
   // Get all available themes
   const getAvailableThemes = useCallback(() => {
@@ -140,12 +139,11 @@ export const useTheme = () => {
 
   // Initialize theme on mount
   useEffect(() => {
-    loadThemeFromSupabase();
+    loadTheme();
 
     // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e) => {
-      // Only auto-switch if user hasn't manually set a theme
       const userId = getUserId();
       if (!userId) {
         const systemTheme = e.matches ? 'dark' : 'light';
@@ -155,7 +153,7 @@ export const useTheme = () => {
 
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [loadThemeFromSupabase, setTheme]);
+  }, [loadTheme, setTheme]);
 
   return {
     currentTheme,
@@ -168,7 +166,7 @@ export const useTheme = () => {
     getAvailableThemes,
     getThemeDisplayName,
     isDarkTheme,
-    saveThemeToSupabase,
-    loadThemeFromSupabase
+    saveTheme,
+    loadTheme
   };
 };

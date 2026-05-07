@@ -1,5 +1,9 @@
 /* Global styles with CSS variables for SelfDesk theme system */
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Light Mode - Default Theme */
 :root {
   /* Core Theme Colors - These will be dynamically updated by the theme system */
