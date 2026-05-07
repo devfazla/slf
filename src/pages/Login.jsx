@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock, Eye, EyeOff, AlertCircle, Settings } from 'lucide-react'
-import ThemeTest from '../components/ThemeTest'
 
 const Login = () => {
   const [password, setPassword] = useState('')
@@ -189,11 +188,6 @@ const Login = () => {
         {/* Footer */}
         <div className="text-center text-xs text-text_tertiary">
           <p>SelfDesk - Your Personal Workspace</p>
-        </div>
-
-        {/* Theme Test Component - Temporary for testing */}
-        <div className="mt-8 pt-8 border-t border-border">
-          <ThemeTest />
         </div>
       </div>
     </div>
