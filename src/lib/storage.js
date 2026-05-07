@@ -56,10 +56,34 @@ export function getThemeMode() {
 }
 
 /**
+ * Get user ID from localStorage
+ * @returns {string|null} - User ID or null if not found
+ */
+export function getUserId() {
+  return localStorage.getItem('selfdesk_user_id');
+}
+
+/**
+ * Store user ID in localStorage
+ * @param {string} userId - User ID
+ */
+export function setUserId(userId) {
+  localStorage.setItem('selfdesk_user_id', userId);
+}
+
+/**
+ * Clear user ID from localStorage
+ */
+export function clearUserId() {
+  localStorage.removeItem('selfdesk_user_id');
+}
+
+/**
  * Clear all SelfDesk data from localStorage
  */
 export function clearAllData() {
   localStorage.removeItem('selfdesk_session');
   localStorage.removeItem('selfdesk_theme');
   localStorage.removeItem('selfdesk_theme_mode');
+  localStorage.removeItem('selfdesk_user_id');
 }

@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
+import ThemeProvider from './components/ThemeProvider'
 import Login from './pages/Login'
 import Chat from './pages/Chat'
 import Notes from './pages/Notes'
@@ -11,7 +12,9 @@ import './styles/globals.css'
 function App() {
   return (
     <Router>
-      <AppContent />
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </Router>
   )
 }
