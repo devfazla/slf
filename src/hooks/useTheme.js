@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import { THEME_PRESETS, COLOR_KEYS } from '../config/themeConfig';
 import { applyTheme } from '../lib/applyTheme';
-import { getUserId, setThemePreference, getThemePreference } from '../lib/storage';
+import { setThemePreference, getThemePreference } from '../lib/storage';
 
 export const useTheme = () => {
   const [currentTheme, setCurrentTheme] = useState('light');
@@ -25,15 +26,14 @@ export const useTheme = () => {
       setColors(colorsToUse);
       applyTheme(colorsToUse);
 
-      // Try to load from Supabase (non-blocking, won't crash if it fails)
-      const userId = getUserId();
-      if (userId) {
+      // Try to load from Supabase (non-blocking)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
         try {
-          const { supabase } = await import('../lib/supabaseClient');
           const { data } = await supabase
             .from('app_settings')
             .select('current_theme, theme_colors')
-            .eq('user_id', userId)
+            .eq('user_id', user.id)
             .single();
 
           if (data) {
@@ -44,13 +44,11 @@ export const useTheme = () => {
             applyTheme(supaColors);
           }
         } catch (supabaseErr) {
-          // Supabase not available - localStorage theme is already applied, just continue
           console.warn('Supabase theme load skipped:', supabaseErr.message);
         }
       }
     } catch (err) {
       console.error('Error loading theme:', err);
-      // Fallback to light theme
       setCurrentTheme('light');
       setColors(THEME_PRESETS.light);
       applyTheme(THEME_PRESETS.light);
@@ -61,26 +59,22 @@ export const useTheme = () => {
 
   // Save theme (localStorage as primary, Supabase as secondary)
   const saveTheme = useCallback(async (themeName, customColors = null) => {
-    // Always save to localStorage first
     setThemePreference(themeName);
 
-    // Try Supabase (non-blocking)
-    const userId = getUserId();
-    if (userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
       try {
-        const { supabase } = await import('../lib/supabaseClient');
         const colorsToSave = customColors || THEME_PRESETS[themeName];
         const { error: supabaseError } = await supabase
           .from('app_settings')
           .upsert({
-            user_id: userId,
+            user_id: user.id,
             current_theme: themeName,
             theme_colors: colorsToSave,
             updated_at: new Date().toISOString()
           });
         if (supabaseError) throw supabaseError;
       } catch (err) {
-        // Supabase save failed - localStorage is already saved, just continue
         console.warn('Supabase theme save skipped:', err.message);
       }
     }
@@ -141,14 +135,10 @@ export const useTheme = () => {
   useEffect(() => {
     loadTheme();
 
-    // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e) => {
-      const userId = getUserId();
-      if (!userId) {
-        const systemTheme = e.matches ? 'dark' : 'light';
-        setTheme(systemTheme);
-      }
+      const systemTheme = e.matches ? 'dark' : 'light';
+      setTheme(systemTheme);
     };
 
     mediaQuery.addEventListener('change', handleChange);

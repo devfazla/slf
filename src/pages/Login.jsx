@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Lock, Eye, EyeOff, AlertCircle, Settings } from 'lucide-react'
+import { Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
 
 const Login = () => {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isFirstTime, setIsFirstTime] = useState(false)
   const navigate = useNavigate()
+  const { login } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -22,16 +23,9 @@ const Login = () => {
     setError('')
 
     try {
-      // TODO: Replace with actual authentication logic
-      // For now, simulate authentication
-      const response = await simulateAuth(password)
+      const response = await login(password)
       
       if (response.success) {
-        // Store session token
-        localStorage.setItem('selfdesk_session', response.token)
-        localStorage.setItem('selfdesk_user_id', response.userId)
-        
-        // Redirect to chat
         navigate('/chat')
       } else {
         setError(response.message || 'Authentication failed')
@@ -40,42 +34,6 @@ const Login = () => {
       setError('An error occurred. Please try again.')
     } finally {
       setLoading(false)
-    }
-  }
-
-  // Temporary simulation function - will be replaced with real auth
-  const simulateAuth = async (password) => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Check if this is first time setup
-    const hasSetup = localStorage.getItem('selfdesk_setup')
-    
-    if (!hasSetup) {
-      // First time setup - accept any password
-      localStorage.setItem('selfdesk_setup', 'true')
-      localStorage.setItem('selfdesk_password_hash', btoa(password)) // Simple encoding for demo
-      
-      return {
-        success: true,
-        token: btoa(Date.now().toString()),
-        userId: 'user_' + Date.now()
-      }
-    } else {
-      // Verify password
-      const storedHash = localStorage.getItem('selfdesk_password_hash')
-      if (btoa(password) === storedHash) {
-        return {
-          success: true,
-          token: btoa(Date.now().toString()),
-          userId: 'user_' + Date.now()
-        }
-      } else {
-        return {
-          success: false,
-          message: 'Incorrect password'
-        }
-      }
     }
   }
 
@@ -138,18 +96,6 @@ const Login = () => {
                 <span>{error}</span>
               </div>
             )}
-
-            {/* First Time Setup Notice */}
-            {!localStorage.getItem('selfdesk_setup') && (
-              <div className="bg-info bg-opacity-10 border border-info border-opacity-20 rounded-lg p-3">
-                <div className="flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4 text-info" />
-                  <p className="text-sm text-info">
-                    First time setup! Your password will be set for future logins.
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Submit Button */}
@@ -170,20 +116,6 @@ const Login = () => {
             </button>
           </div>
         </form>
-
-        {/* Settings Link */}
-        {localStorage.getItem('selfdesk_setup') && (
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => navigate('/settings')}
-              className="flex items-center space-x-2 text-sm text-text_secondary hover:text-primary transition-colors mx-auto"
-            >
-              <Settings className="h-4 w-4" />
-              <span>Settings</span>
-            </button>
-          </div>
-        )}
 
         {/* Footer */}
         <div className="text-center text-xs text-text_tertiary">

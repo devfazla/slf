@@ -8,14 +8,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// Helper function to get user ID from session
-export function getUserId() {
-  // For now, we'll use a fixed user ID since this is a single-user app
-  // In production, this could be derived from the password hash or a session token
-  return 'selfdesk_user_1';
-}
+// Single Supabase client - handles auth session automatically
+// When user signs in via supabase.auth.signInWithPassword(), the client
+// automatically includes the JWT in all requests. RLS policies using auth.uid() just work.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+});
 
 // Database table names
 export const TABLES = {
