@@ -65,15 +65,31 @@ export const useTheme = () => {
     if (user) {
       try {
         const colorsToSave = customColors || THEME_PRESETS[themeName];
-        const { error: supabaseError } = await supabase
+        
+        // First try to update existing record
+        const { error: updateError } = await supabase
           .from('app_settings')
-          .upsert({
-            user_id: user.id,
+          .update({
             current_theme: themeName,
             theme_colors: colorsToSave,
             updated_at: new Date().toISOString()
-          });
-        if (supabaseError) throw supabaseError;
+          })
+          .eq('user_id', user.id);
+          
+        // If no record exists, insert new one
+        if (updateError && updateError.code === 'PGRST116') {
+          const { error: insertError } = await supabase
+            .from('app_settings')
+            .insert({
+              user_id: user.id,
+              current_theme: themeName,
+              theme_colors: colorsToSave,
+              updated_at: new Date().toISOString()
+            });
+          if (insertError) throw insertError;
+        } else if (updateError) {
+          throw updateError;
+        }
       } catch (err) {
         console.warn('Supabase theme save skipped:', err.message);
       }

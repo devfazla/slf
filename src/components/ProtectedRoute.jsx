@@ -10,7 +10,7 @@ const ProtectedRoute = ({ children }) => {
     if (!isLoading && !isAuthenticated) {
       navigate('/login')
     }
-  }, [isAuthenticated, isLoading, navigate])
+  }, [isAuthenticated, isLoading])
 
   // Show loading spinner while checking authentication
   if (isLoading) {

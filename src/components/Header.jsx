@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useThemeContext } from '../context/ThemeContext.jsx';
 import { useAuth } from '../hooks/useAuth';
 import { Menu, LogOut, Palette } from 'lucide-react';
@@ -13,9 +14,11 @@ import { Menu, LogOut, Palette } from 'lucide-react';
 const Header = ({ onMenuClick }) => {
   const { currentTheme, getThemeDisplayName, setTheme, getAvailableThemes } = useThemeContext();
   const { logout } = useAuth();
+  const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
   };
 
   const handleThemeToggle = () => {
