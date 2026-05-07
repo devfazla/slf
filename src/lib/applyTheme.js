@@ -1,4 +1,4 @@
-import { COLOR_KEYS } from '../config/themeConfig';
+import { COLOR_KEYS, THEME_PRESETS } from '../config/themeConfig';
 
 /**
  * Apply theme colors to CSS variables on the document root
@@ -38,7 +38,6 @@ export const applyTheme = (colors) => {
 const getThemeName = (colors) => {
   // This is a simplified check - in a real app, you might want to store the theme name separately
   // or do a more sophisticated comparison
-  const { THEME_PRESETS } = require('../config/themeConfig');
   
   for (const [name, presetColors] of Object.entries(THEME_PRESETS)) {
     if (colorsMatch(colors, presetColors)) {
