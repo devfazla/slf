@@ -1,21 +1,28 @@
-import Layout from '../components/Layout'
-import { MessageCircle } from 'lucide-react'
+import React from 'react';
+import Layout from '../components/Layout';
+import ChatUI from '../components/ChatUI';
+import { MessageCircle } from 'lucide-react';
 
 const Chat = () => {
   return (
     <Layout>
-      <div className="flex flex-col items-center justify-center h-96 bg-surface rounded-lg p-8">
-        <MessageCircle className="h-16 w-16 text-primary mb-4" />
-        <h1 className="text-2xl font-bold text-text_primary mb-2">Chat</h1>
-        <p className="text-text_secondary text-center">
-          Chat interface will be implemented in Step 6
-        </p>
-        <p className="text-text_tertiary text-sm mt-2">
-          WhatsApp-style chat with Telegram integration
-        </p>
+      <div className="flex flex-col h-full">
+        {/* Chat Header */}
+        <div className="bg-surface border-b border-border px-6 py-4">
+          <div className="flex items-center space-x-3">
+            <MessageCircle className="h-6 w-6 text-primary" />
+            <h1 className="text-xl font-semibold text-text_primary">Chat</h1>
+            <span className="text-sm text-text_tertiary">Self-Chat via Telegram</span>
+          </div>
+        </div>
+        
+        {/* Chat Interface */}
+        <div className="flex-1 overflow-hidden">
+          <ChatUI />
+        </div>
       </div>
     </Layout>
-  )
-}
+  );
+};
 
-export default Chat
+export default Chat;

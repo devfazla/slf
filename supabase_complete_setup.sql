@@ -1,9 +1,9 @@
--- SelfDesk Fresh Supabase Setup
+-- SelfDesk Complete Supabase Setup
 -- Run this entire script in Supabase SQL Editor
--- Creates all tables and RLS policies for the new auth system
+-- Creates all tables with "others" JSONB column, RLS policies, indexes, and default data
 
 -- ========================================
--- 1. CREATE TABLES
+-- 1. CREATE TABLES (with others column)
 -- ========================================
 
 -- app_settings: Stores user theme preferences
@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS app_settings (
     user_id TEXT NOT NULL UNIQUE,  -- Will store auth.uid()::text, unique for upsert
     current_theme TEXT NOT NULL DEFAULT 'light',
     theme_colors JSONB NOT NULL DEFAULT '{"primary":"#3b82f6","secondary":"#64748b","background":"#ffffff","surface":"#f8fafc","text_primary":"#1e293b","text_secondary":"#64748b","text_tertiary":"#94a3b8","border":"#e2e8f0","danger":"#ef4444","warning":"#f59e0b","success":"#10b981","info":"#06b6d4"}',
+    others JSONB DEFAULT '{}',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS folders (
     name TEXT NOT NULL,
     parent_id BIGINT REFERENCES folders(id) ON DELETE CASCADE,
     color TEXT DEFAULT '#64748b',
+    others JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -35,6 +37,7 @@ CREATE TABLE IF NOT EXISTS notes (
     folder_id BIGINT REFERENCES folders(id) ON DELETE SET NULL,
     is_favorite BOOLEAN DEFAULT FALSE,
     tags TEXT[] DEFAULT '{}',
+    others JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -49,6 +52,7 @@ CREATE TABLE IF NOT EXISTS files (
     folder_id BIGINT REFERENCES folders(id) ON DELETE SET NULL,
     size_bytes BIGINT,
     mime_type TEXT,
+    others JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -59,6 +63,7 @@ CREATE TABLE IF NOT EXISTS theme_presets (
     name TEXT NOT NULL,
     colors JSONB NOT NULL,
     is_default BOOLEAN DEFAULT FALSE,
+    others JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -71,6 +76,9 @@ CREATE TABLE IF NOT EXISTS message_metadata (
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     has_file BOOLEAN DEFAULT FALSE,
     file_type TEXT,
+    content TEXT,
+    deleted BOOLEAN DEFAULT FALSE,
+    others JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -78,6 +86,7 @@ CREATE TABLE IF NOT EXISTS message_metadata (
 -- 2. CREATE INDEXES
 -- ========================================
 
+-- Standard indexes
 CREATE INDEX IF NOT EXISTS idx_app_settings_user_id ON app_settings(user_id);
 CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);
 CREATE INDEX IF NOT EXISTS idx_notes_folder_id ON notes(folder_id);
@@ -88,6 +97,15 @@ CREATE INDEX IF NOT EXISTS idx_files_folder_id ON files(folder_id);
 CREATE INDEX IF NOT EXISTS idx_theme_presets_user_id ON theme_presets(user_id);
 CREATE INDEX IF NOT EXISTS idx_message_metadata_user_id ON message_metadata(user_id);
 CREATE INDEX IF NOT EXISTS idx_message_metadata_telegram_id ON message_metadata(telegram_message_id);
+CREATE INDEX IF NOT EXISTS idx_message_metadata_deleted ON message_metadata(deleted);
+
+-- JSON GIN indexes for 'others' column performance
+CREATE INDEX IF NOT EXISTS idx_app_settings_others ON app_settings USING GIN (others);
+CREATE INDEX IF NOT EXISTS idx_notes_others ON notes USING GIN (others);
+CREATE INDEX IF NOT EXISTS idx_folders_others ON folders USING GIN (others);
+CREATE INDEX IF NOT EXISTS idx_files_others ON files USING GIN (others);
+CREATE INDEX IF NOT EXISTS idx_theme_presets_others ON theme_presets USING GIN (others);
+CREATE INDEX IF NOT EXISTS idx_message_metadata_others ON message_metadata USING GIN (others);
 
 -- ========================================
 -- 3. ENABLE RLS
@@ -200,7 +218,7 @@ GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 
 -- ========================================
--- 6. CREATE FUNCTIONS (Optional)
+-- 6. CREATE FUNCTIONS AND TRIGGERS
 -- ========================================
 
 -- Function to update updated_at timestamp
@@ -220,20 +238,34 @@ CREATE TRIGGER update_notes_updated_at BEFORE UPDATE ON notes
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ========================================
--- 7. SETUP COMPLETE
+-- 7. INSERT DEFAULT DATA
 -- ========================================
 
--- Insert default settings for new users
--- This will be handled by the application when users first log in
--- But we can create a function to initialize user settings if needed
-
+-- Function to initialize user settings
 CREATE OR REPLACE FUNCTION initialize_user_settings(user_uuid TEXT)
 RETURNS VOID AS $$
 BEGIN
-    INSERT INTO app_settings (user_id, current_theme, theme_colors)
-    VALUES (user_uuid, 'light', '{"primary":"#3b82f6","secondary":"#64748b","background":"#ffffff","surface":"#f8fafc","text_primary":"#1e293b","text_secondary":"#64748b","text_tertiary":"#94a3b8","border":"#e2e8f0","danger":"#ef4444","warning":"#f59e0b","success":"#10b981","info":"#06b6d4"}')
+    INSERT INTO app_settings (user_id, current_theme, theme_colors, others)
+    VALUES (user_uuid, 'light', '{"primary":"#3b82f6","secondary":"#64748b","background":"#ffffff","surface":"#f8fafc","text_primary":"#1e293b","text_secondary":"#64748b","text_tertiary":"#94a3b8","border":"#e2e8f0","danger":"#ef4444","warning":"#f59e0b","success":"#10b981","info":"#06b6d4"}', '{}')
     ON CONFLICT (user_id) DO NOTHING;
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT 'SelfDesk database setup complete!' as status;
+-- Insert default folders for new users (optional - can be handled by app)
+CREATE OR REPLACE FUNCTION initialize_default_folders(user_uuid TEXT)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO folders (user_id, name, color, others) VALUES
+        (user_uuid, 'Personal', '#3b82f6', '{}'),
+        (user_uuid, 'Work', '#10b981', '{}'),
+        (user_uuid, 'Ideas', '#f59e0b', '{}'),
+        (user_uuid, 'Archive', '#64748b', '{}')
+    ON CONFLICT DO NOTHING;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ========================================
+-- 8. SETUP COMPLETE
+-- ========================================
+
+SELECT 'SelfDesk complete database setup with "others" column finished!' as status;
