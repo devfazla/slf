@@ -39,7 +39,7 @@ const NotesList = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-surface border-r border-border">
+    <div className="flex flex-col h-full bg-surface">
       {/* Search + New Note */}
       <div className="p-4 space-y-3 flex-shrink-0 border-b border-border">
         {/* Search Bar */}
@@ -81,39 +81,59 @@ const NotesList = ({
             </p>
           </div>
         ) : (
-          <div className="py-2">
+          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
             {notes.map((note) => (
               <div
                 key={note.id}
                 onClick={() => onSelectNote(note.id)}
-                className={`group mx-2 mb-1 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                className={`group px-4 py-4 rounded-xl cursor-pointer transition-all duration-300 ${
                   selectedNoteId === note.id
-                    ? 'bg-primary text-white shadow-lg border-2 border-primary/50 -translate-y-0.5'
-                    : 'hover:bg-surface2 border border-border/30'
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20 ring-2 ring-primary/50 -translate-y-1'
+                    : 'bg-surface2/50 hover:bg-surface2 border border-border/50 hover:border-primary/30 hover:-translate-y-0.5'
                 }`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0 mr-2">
-                    {/* Title */}
-                    <h3 className={`text-sm font-semibold truncate ${
-                      selectedNoteId === note.id
-                        ? 'text-white'
-                        : 'text-text_primary'
-                    }`}>
-                      {note.title || 'Untitled Note'}
-                    </h3>
+                <div className="flex flex-col h-full">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1 min-w-0">
+                      {/* Title */}
+                      <h3 className={`text-sm font-bold truncate ${
+                        selectedNoteId === note.id
+                          ? 'text-white'
+                          : 'text-text_primary'
+                      }`}>
+                        {note.title || 'Untitled Note'}
+                      </h3>
+                    </div>
 
-                    {/* Preview */}
-                    <p className={`text-xs mt-1 line-clamp-2 leading-relaxed ${
-                      selectedNoteId === note.id
-                        ? 'text-white/80'
-                        : 'text-text_tertiary'
-                    }`}>
-                      {getPreview(note.content)}
-                    </p>
+                    {/* Delete button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteNote(note.id, note.title);
+                      }}
+                      className={`p-1.5 rounded-lg transition-all flex-shrink-0 ${
+                        selectedNoteId === note.id
+                          ? 'text-white/60 hover:text-white hover:bg-white/10'
+                          : 'opacity-0 group-hover:opacity-100 text-text_tertiary hover:text-danger hover:bg-danger/10'
+                      }`}
+                      title="Delete note"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
 
-                    {/* Date */}
-                    <p className={`text-[10px] mt-1.5 uppercase tracking-wider font-medium ${
+                  {/* Preview */}
+                  <p className={`text-xs line-clamp-3 leading-relaxed mb-4 flex-1 ${
+                    selectedNoteId === note.id
+                      ? 'text-white/80'
+                      : 'text-text_secondary'
+                  }`}>
+                    {getPreview(note.content)}
+                  </p>
+
+                  {/* Date */}
+                  <div className="flex items-center mt-auto">
+                    <p className={`text-[10px] uppercase tracking-widest font-bold ${
                       selectedNoteId === note.id
                         ? 'text-white/60'
                         : 'text-text_tertiary'
@@ -121,18 +141,6 @@ const NotesList = ({
                       {formatDate(note.updated_at || note.created_at)}
                     </p>
                   </div>
-
-                  {/* Delete button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteNote(note.id, note.title);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-danger/10 text-text_tertiary hover:text-danger transition-all flex-shrink-0 mt-0.5"
-                    title="Delete note"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
                 </div>
               </div>
             ))}

@@ -5,13 +5,14 @@ import { useAuth } from '../hooks/useAuth';
 import { Menu, LogOut, Palette } from 'lucide-react';
 
 /**
- * Top header bar component
- * Display app title "SelfDesk"
- * Show current theme name
- * Quick theme toggle button (optional)
- * Show logout button
+ * Flexible Top Header Component
+ * @param {string} title - Page title
+ * @param {React.Component} icon - Lucide icon component
+ * @param {React.ReactNode} actions - Custom action buttons for the page
+ * @param {function} onMenuClick - Sidebar toggle handler
+ * @param {string} height - Custom height class (e.g., 'h-20')
  */
-const Header = ({ onMenuClick }) => {
+const Header = ({ title, icon: Icon, actions, onMenuClick, height = 'h-16' }) => {
   const { currentTheme, getThemeDisplayName, setTheme, getAvailableThemes } = useThemeContext();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -29,10 +30,10 @@ const Header = ({ onMenuClick }) => {
   };
 
   return (
-    <header className="bg-surface border-b border-border px-4 lg:px-6 py-4">
-      <div className="flex items-center justify-between">
-        {/* Left Section - Menu and Title */}
-        <div className="flex items-center space-x-4">
+    <header className={`bg-surface border-b border-border px-4 lg:px-6 flex items-center flex-shrink-0 lg:ml-64 ${height}`}>
+      <div className="flex items-center justify-between w-full">
+        {/* Left Section - Menu, Icon and Title */}
+        <div className="flex items-center space-x-3">
           {/* Mobile Menu Button */}
           <button
             onClick={onMenuClick}
@@ -42,24 +43,31 @@ const Header = ({ onMenuClick }) => {
             <Menu className="h-5 w-5 text-text_secondary" />
           </button>
 
-          {/* App Title */}
-          <div>
-            <h1 className="text-xl font-bold text-text_primary">SelfDesk</h1>
-            <p className="text-sm text-text-secondary hidden sm:block">Your Personal Workspace</p>
+          {/* Page Icon & Title */}
+          <div className="flex items-center space-x-3">
+            {Icon && <Icon className="h-6 w-6 text-primary" />}
+            <h1 className="text-xl font-semibold text-text_primary">{title || 'SelfDesk'}</h1>
           </div>
         </div>
 
-        {/* Right Section - Theme and Actions */}
-        <div className="flex items-center space-x-3">
+        {/* Right Section - Custom Actions + Global Actions */}
+        <div className="flex items-center space-x-2">
+          {/* Custom Page Actions */}
+          {actions && (
+            <>
+              {actions}
+              <div className="w-px h-6 bg-border mx-1" />
+            </>
+          )}
           
-          {/* Quick Theme Toggle (Desktop) */}
+          {/* Theme Toggle */}
           <button
             onClick={handleThemeToggle}
-            className="hidden md:flex items-center space-x-2 px-4 py-2 bg-surface2 border border-border rounded-lg hover:bg-surface transition-colors"
+            className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-surface2 border border-border rounded-lg hover:bg-surface transition-colors"
             title="Switch theme"
           >
             <Palette className="h-4 w-4 text-text-secondary" />
-            <span className="text-sm font-medium text-text-primary">
+            <span className="text-xs font-medium text-text-primary">
               {getThemeDisplayName(currentTheme)}
             </span>
           </button>
@@ -67,29 +75,13 @@ const Header = ({ onMenuClick }) => {
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="flex items-center space-x-2 px-3 py-2 bg-danger text-white rounded-lg hover:bg-danger/90 transition-colors"
+            className="flex items-center space-x-2 px-3 py-1.5 bg-danger/10 text-danger rounded-lg hover:bg-danger hover:text-white transition-colors"
             title="Logout"
           >
             <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">Logout</span>
+            <span className="hidden sm:inline text-xs font-medium">Logout</span>
           </button>
         </div>
-      </div>
-
-      {/* Mobile Theme Info */}
-      <div className="flex md:hidden items-center justify-between mt-3 pt-3 border-t border-border">
-        <div className="flex items-center space-x-2">
-          <Palette className="h-4 w-4 text-text-secondary" />
-          <span className="text-sm text-text_secondary">
-            Theme: {getThemeDisplayName(currentTheme)}
-          </span>
-        </div>
-        <button
-          onClick={handleThemeToggle}
-          className="text-sm text-primary hover:text-primary/80 transition-colors"
-        >
-          Change Theme
-        </button>
       </div>
     </header>
   );

@@ -57,7 +57,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       `}>
         <div className="flex flex-col h-full">
           {/* Mobile Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center justify-between px-4 h-16 border-b border-border">
             <h2 className="text-lg font-semibold text-text_primary">SelfDesk</h2>
             <button
               onClick={onClose}
@@ -108,9 +108,11 @@ const Sidebar = ({ isOpen, onClose }) => {
       <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-64 lg:flex lg:flex-col">
         <div className="flex flex-col h-full bg-surface border-r border-border">
           {/* Desktop Header */}
-          <div className="p-6 border-b border-border">
-            <h2 className="text-xl font-bold text-text_primary">SelfDesk</h2>
-            <p className="text-sm text-text-secondary mt-1">Your Personal Workspace</p>
+          <div className="px-6 h-16 flex items-center border-b border-border">
+            <div>
+              <h2 className="text-xl font-bold text-text_primary leading-tight">SelfDesk</h2>
+              <p className="text-[10px] text-text-secondary uppercase tracking-wider font-medium">Workspace</p>
+            </div>
           </div>
 
           {/* Navigation Items */}

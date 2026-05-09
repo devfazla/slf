@@ -212,10 +212,74 @@ const ChatUI = ({ onPollingChange, onSyncComplete, refreshTrigger }) => {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-text_secondary">Loading messages...</p>
+      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-background via-surface1/50 to-background">
+        <div className="text-center max-w-md mx-auto p-8">
+          {/* Animated Logo/Icon */}
+          <div className="relative mb-8">
+            <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse"></div>
+            <div className="relative bg-surface2 border border-border/40 rounded-2xl p-6 shadow-2xl">
+              <div className="flex items-center justify-center space-x-2">
+                <div className="relative">
+                  <div className="h-3 w-3 bg-primary rounded-full animate-bounce"></div>
+                  <div className="absolute top-0 left-0 h-3 w-3 bg-primary rounded-full animate-ping"></div>
+                </div>
+                <div className="h-3 w-3 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="h-3 w-3 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Loading Text with Typing Effect */}
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold text-text mb-2">Connecting to chat...</h3>
+            <div className="flex items-center justify-center space-x-1">
+              <span className="text-text_secondary">Loading your messages</span>
+              <div className="flex space-x-1">
+                <div className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                <div className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Skeleton Messages Preview */}
+          <div className="space-y-4 mb-6">
+            <div className="flex items-start space-x-3 animate-pulse">
+              <div className="w-8 h-8 bg-surface2 rounded-full flex-shrink-0"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-surface2 rounded-lg w-3/4"></div>
+                <div className="h-4 bg-surface2 rounded-lg w-1/2"></div>
+              </div>
+            </div>
+            <div className="flex items-start space-x-3 animate-pulse justify-end">
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-primary/20 rounded-lg w-2/3 ml-auto"></div>
+                <div className="h-4 bg-primary/20 rounded-lg w-1/3 ml-auto"></div>
+              </div>
+              <div className="w-8 h-8 bg-primary/20 rounded-full flex-shrink-0"></div>
+            </div>
+            <div className="flex items-start space-x-3 animate-pulse">
+              <div className="w-8 h-8 bg-surface2 rounded-full flex-shrink-0"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-surface2 rounded-lg w-5/6"></div>
+                <div className="h-4 bg-surface2 rounded-lg w-2/3"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress Indicator */}
+          <div className="relative">
+            <div className="h-1 bg-surface2 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full shimmer" 
+                   style={{ width: '60%' }}></div>
+            </div>
+            <p className="text-xs text-text_secondary mt-2">Fetching your conversation history...</p>
+          </div>
+
+          {/* Decorative Elements */}
+          <div className="absolute top-4 left-4 w-2 h-2 bg-primary/30 rounded-full animate-pulse"></div>
+          <div className="absolute top-8 right-6 w-1 h-1 bg-primary/20 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+          <div className="absolute bottom-6 left-8 w-1.5 h-1.5 bg-primary/25 rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
         </div>
       </div>
     );

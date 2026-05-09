@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Save, Check, Loader2, Eye, Edit3, Columns, FileText } from 'lucide-react';
+import { Save, Check, Loader2, Eye, Edit3, Columns, FileText, Maximize2, Minimize2, ArrowLeft } from 'lucide-react';
 import MarkdownPreview from './MarkdownPreview';
 import MarkdownToolbar from './MarkdownToolbar';
 import UrlPromptDialog from './UrlPromptDialog';
@@ -11,10 +11,11 @@ import UrlPromptDialog from './UrlPromptDialog';
 
 const AUTO_SAVE_DELAY = 30000; // 30 seconds
 
-const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange }) => {
+const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange, onBack }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [viewMode, setViewMode] = useState('split'); // 'edit' | 'split' | 'preview'
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [urlPrompt, setUrlPrompt] = useState({ isOpen: false, type: 'image' });
   const saveTimeoutRef = useRef(null);
@@ -123,6 +124,10 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
     if (note) {
       onSave(note.id, { title, content });
     }
+  };
+
+  const toggleFullScreen = () => {
+    setIsFullScreen(!isFullScreen);
   };
 
   const applyFormatting = (before, after = '', defaultText = '') => {
@@ -360,7 +365,12 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background min-w-0" onBlur={handleBlur}>
+    <div 
+      className={`flex-1 flex flex-col h-full bg-background min-w-0 transition-all duration-300 ${
+        isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen' : 'relative'
+      }`} 
+      onBlur={handleBlur}
+    >
       {/* Editor Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-border flex-shrink-0">
         <div className="flex items-center space-x-3">
@@ -369,6 +379,18 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
         </div>
 
         <div className="flex items-center space-x-1">
+          {/* Mobile Back Button - At the left side of this actions section */}
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="lg:hidden flex items-center space-x-1.5 px-3 py-1.5 mr-3 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all border border-primary/20"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="text-xs font-bold">Back</span>
+            </button>
+          )}
+
+
           {/* View mode toggles */}
           <button
             onClick={() => setViewMode('edit')}
@@ -412,6 +434,19 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
             title="Save (Ctrl+S)"
           >
             <Save className="h-4 w-4" />
+          </button>
+
+          {/* Full screen toggle */}
+          <button
+            onClick={toggleFullScreen}
+            className={`p-2 rounded-md transition-colors ${
+              isFullScreen 
+                ? 'bg-primary/10 text-primary' 
+                : 'text-text_tertiary hover:text-text_primary hover:bg-surface2'
+            }`}
+            title={isFullScreen ? 'Exit full screen' : 'Full screen'}
+          >
+            {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
         </div>
       </div>

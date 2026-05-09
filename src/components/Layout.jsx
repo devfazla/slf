@@ -10,7 +10,7 @@ import Sidebar from './Sidebar';
  * └── Main Content Area
  * Responsive (sidebar collapses on mobile)
  */
-const Layout = ({ children, fullHeight = false }) => {
+const Layout = ({ children, fullHeight = false, title, icon, actions, headerHeight }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const toggleSidebar = () => {
@@ -24,7 +24,13 @@ const Layout = ({ children, fullHeight = false }) => {
   return (
     <div className={`${fullHeight ? 'h-screen' : 'min-h-screen'} bg-background flex flex-col`}>
       {/* Header */}
-      <Header onMenuClick={toggleSidebar} />
+      <Header 
+        title={title} 
+        icon={icon} 
+        actions={actions} 
+        onMenuClick={toggleSidebar} 
+        height={headerHeight}
+      />
 
       {/* Main Content Area */}
       <div className="flex flex-1 relative min-h-0">

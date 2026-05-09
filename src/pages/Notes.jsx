@@ -5,7 +5,7 @@ import NotesEditor from '../components/NotesEditor';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import { useNotes } from '../hooks/useNotes';
 import { useGlobalSave } from '../context/GlobalSaveContext';
-import { FileText, ArrowLeft } from 'lucide-react';
+import { FileText } from 'lucide-react';
 
 const Notes = () => {
   const [notes, setNotes] = useState([]);
@@ -174,36 +174,25 @@ const Notes = () => {
   };
 
   return (
-    <Layout fullHeight>
+    <Layout 
+      fullHeight 
+      title="Notes" 
+      icon={FileText} 
+      actions={
+        notes.length > 0 && (
+          <span className="bg-primary/10 text-primary text-xs font-semibold px-2 py-0.5 rounded-full">
+            {notes.length}
+          </span>
+        )
+      }
+    >
       <div className="flex flex-col h-full min-h-0">
-        {/* Notes Header */}
-        <div className="bg-surface border-b border-border px-6 py-3 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              {/* Mobile back button */}
-              {mobileShowEditor && (
-                <button
-                  onClick={handleMobileBack}
-                  className="lg:hidden p-1 rounded-md hover:bg-surface2 text-text_secondary transition-colors"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </button>
-              )}
-              <FileText className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-semibold text-text_primary">Notes</h1>
-              {notes.length > 0 && (
-                <span className="bg-primary/10 text-primary text-xs font-semibold px-2 py-0.5 rounded-full">
-                  {notes.length}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+
 
         {/* Split Layout */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
           {/* Notes List — left sidebar */}
-          <div className={`w-80 flex-shrink-0 ${mobileShowEditor ? 'hidden lg:flex' : 'flex'} flex-col`}>
+          <div className={`w-full lg:w-80 flex-shrink-0 ${mobileShowEditor ? 'hidden lg:flex' : 'flex'} flex-col border-r border-border`}>
             <NotesList
               notes={notes}
               selectedNoteId={selectedNoteId}
@@ -224,6 +213,7 @@ const Notes = () => {
               saveStatus={saveStatus}
               onTitleChange={setCurrentTitle}
               onContentChange={setCurrentContent}
+              onBack={handleMobileBack}
             />
           </div>
         </div>
