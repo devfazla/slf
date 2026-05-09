@@ -265,7 +265,16 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ========================================
--- 8. SETUP COMPLETE
+-- 8. ENABLE SUPABASE REALTIME
+-- ========================================
+
+-- Enable Realtime on message_metadata for live incoming message detection
+-- This adds the table to the supabase_realtime publication so that
+-- postgres_changes events (INSERT/UPDATE/DELETE) are broadcast to clients.
+ALTER PUBLICATION supabase_realtime ADD TABLE message_metadata;
+
+-- ========================================
+-- 9. SETUP COMPLETE
 -- ========================================
 
 SELECT 'SelfDesk complete database setup with "others" column finished!' as status;

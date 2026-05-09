@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { sendMessage as sendTelegramMessage, sendDocument, downloadFileById } from '../lib/telegramAPI';
 
@@ -300,6 +300,180 @@ export const useTelegram = () => {
     }
   }, [clearError]);
 
+  /**
+   * Poll Telegram for new messages only (lightweight check)
+   * Returns an array of newly inserted messages, or empty array if none.
+   */
+  const pollNewMessages = useCallback(async () => {
+    try {
+      // Get user ID from auth
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) return [];
+
+      const botToken = import.meta.env.VITE_BOT_TOKEN;
+      const chatId = import.meta.env.VITE_CHAT_ID;
+
+      // Get the latest telegram_message_id we have stored
+      const { data: lastMessage } = await supabase
+        .from('message_metadata')
+        .select('telegram_message_id')
+        .eq('user_id', user.id)
+        .order('telegram_message_id', { ascending: false })
+        .limit(1)
+        .single();
+
+      // Fetch updates from Telegram
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-proxy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          botToken,
+          method: 'getUpdates',
+          body: {
+            offset: lastMessage ? -10 : 0, // Get last 10 updates to catch recent ones
+            limit: 50
+          }
+        })
+      });
+
+      const telegramData = await response.json();
+      const newMessages = [];
+
+      if (telegramData.ok && telegramData.result.length > 0) {
+        for (const update of telegramData.result) {
+          if (update.message && update.message.chat.id.toString() === chatId) {
+            const message = update.message;
+
+            // Check if this message already exists in our database
+            const { data: existingMessage } = await supabase
+              .from('message_metadata')
+              .select('id')
+              .eq('telegram_message_id', message.message_id)
+              .eq('user_id', user.id)
+              .single();
+
+            if (!existingMessage) {
+              // Determine message content and file info
+              let content = message.text || '';
+              let hasFile = false;
+              let fileType = null;
+
+              if (message.document) {
+                content = message.document.file_name || 'Document';
+                hasFile = true;
+                fileType = message.document.mime_type;
+              } else if (message.photo) {
+                content = message.caption || 'Photo';
+                hasFile = true;
+                fileType = 'image/jpeg';
+              } else if (message.video) {
+                content = message.video.file_name || 'Video';
+                hasFile = true;
+                fileType = message.video.mime_type;
+              } else if (message.audio) {
+                content = message.audio.file_name || 'Audio';
+                hasFile = true;
+                fileType = message.audio.mime_type;
+              } else if (message.voice) {
+                content = 'Voice message';
+                hasFile = true;
+                fileType = 'audio/ogg';
+              } else if (message.sticker) {
+                content = message.sticker.emoji || 'Sticker';
+                hasFile = false;
+              } else if (message.animation) {
+                content = 'GIF';
+                hasFile = true;
+                fileType = 'image/gif';
+              }
+
+              // Skip empty content
+              if (!content && !hasFile) continue;
+
+              // Insert into Supabase
+              const messageData = {
+                user_id: user.id,
+                telegram_message_id: message.message_id,
+                message_type: 'bot',
+                content: content,
+                has_file: hasFile,
+                file_type: fileType,
+                deleted: false,
+                timestamp: new Date(message.date * 1000).toISOString()
+              };
+
+              const { data: inserted, error: insertError } = await supabase
+                .from('message_metadata')
+                .insert(messageData)
+                .select()
+                .single();
+
+              if (!insertError && inserted) {
+                newMessages.push({
+                  id: inserted.id,
+                  content: inserted.content,
+                  is_file: inserted.has_file,
+                  file_name: inserted.content,
+                  file_type: inserted.file_type,
+                  telegram_message_id: inserted.telegram_message_id,
+                  timestamp: inserted.timestamp,
+                  message_type: inserted.message_type
+                });
+              }
+            }
+          }
+        }
+      }
+
+      return newMessages;
+    } catch (err) {
+      console.error('Poll new messages error:', err);
+      return []; // Silently fail — polling errors shouldn't break the UI
+    }
+  }, []);
+
+  /**
+   * Subscribe to Supabase Realtime for message_metadata INSERT events.
+   * Returns an unsubscribe function.
+   */
+  const subscribeToMessages = useCallback((onNewMessage) => {
+    const channel = supabase
+      .channel('message_metadata_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'message_metadata'
+        },
+        (payload) => {
+          const msg = payload.new;
+          if (msg) {
+            onNewMessage({
+              id: msg.id,
+              content: msg.content,
+              is_file: msg.has_file,
+              file_name: msg.content,
+              file_type: msg.file_type,
+              telegram_message_id: msg.telegram_message_id,
+              timestamp: msg.timestamp,
+              message_type: msg.message_type
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    // Return cleanup function
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const getFile = useCallback(async (telegramFileId) => {
     try {
       setIsLoading(true);
@@ -358,6 +532,8 @@ export const useTelegram = () => {
     sendMessage,
     sendFile,
     fetchMessages,
+    pollNewMessages,
+    subscribeToMessages,
     getFile,
     deleteMessage,
     isLoading,

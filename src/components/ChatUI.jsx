@@ -1,41 +1,132 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, Download, File, X } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Send, Paperclip, Download, File, X, RefreshCw } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import { useTelegram } from '../hooks/useTelegram';
 import { useAuth } from '../hooks/useAuth';
 
-const ChatUI = () => {
+const POLL_INTERVAL_MS = 5000; // Poll every 5 seconds
+
+const ChatUI = ({ onPollingChange, onSyncComplete, refreshTrigger }) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [sendingProgress, setSendingProgress] = useState(null);
+  const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
-  const { sendMessage, sendFile, fetchMessages } = useTelegram();
+  const pollIntervalRef = useRef(null);
+  const isPollingRef = useRef(false); // Guard against overlapping polls
+  const messagesRef = useRef([]); // Keep a ref to current messages for dedup
+  const { sendMessage, sendFile, fetchMessages, pollNewMessages, subscribeToMessages } = useTelegram();
   const { userId } = useAuth();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Keep messagesRef in sync
   useEffect(() => {
-    loadMessages();
+    messagesRef.current = messages;
+  }, [messages]);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
+
+  // Initial message load
+  useEffect(() => {
+    loadMessages();
+  }, []);
+
+  const performSync = useCallback(async () => {
+    if (isPollingRef.current) return;
+    
+    isPollingRef.current = true;
+    setIsPolling(true);
+    if (onPollingChange) onPollingChange(true);
+
+    try {
+      const newMsgs = await pollNewMessages();
+      if (newMsgs && newMsgs.length > 0) {
+        setMessages(prev => {
+          const existingIds = new Set(prev.map(m => m.id));
+          const uniqueNew = newMsgs.filter(m => !existingIds.has(m.id));
+          if (uniqueNew.length === 0) return prev;
+          return [...prev, ...uniqueNew];
+        });
+      }
+      if (onSyncComplete) onSyncComplete(new Date());
+    } catch (err) {
+      console.error('Polling error:', err);
+    } finally {
+      isPollingRef.current = false;
+      setIsPolling(false);
+      if (onPollingChange) onPollingChange(false);
+    }
+  }, [pollNewMessages, onPollingChange, onSyncComplete]);
+
+  // Handle manual refresh trigger
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      performSync();
+    }
+  }, [refreshTrigger, performSync]);
+
+  // Setup polling + Supabase Realtime on mount, cleanup on unmount
+  useEffect(() => {
+    // Don't start polling until initial load is done
+    if (isLoading) return;
+
+    // --- Telegram Polling ---
+    const startPolling = () => {
+      // Clear any existing interval
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+
+      pollIntervalRef.current = setInterval(() => {
+        performSync();
+      }, POLL_INTERVAL_MS);
+    };
+
+    startPolling();
+
+    // --- Supabase Realtime Subscription ---
+    const unsubscribe = subscribeToMessages((newMsg) => {
+      setMessages(prev => {
+        // Deduplicate: check by id or telegram_message_id
+        const exists = prev.some(
+          m => m.id === newMsg.id || 
+               (m.telegram_message_id && m.telegram_message_id === newMsg.telegram_message_id)
+        );
+        if (exists) return prev;
+        return [...prev, newMsg];
+      });
+      if (onSyncComplete) onSyncComplete(new Date());
+    });
+
+    // Cleanup on unmount
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [isLoading, performSync, subscribeToMessages, onSyncComplete]);
 
   const loadMessages = async () => {
     try {
       setIsLoading(true);
       const messageList = await fetchMessages();
       setMessages(messageList || []);
+      if (onSyncComplete) onSyncComplete(new Date());
     } catch (error) {
       console.error('Failed to load messages:', error);
-      // Show user-friendly error message
-      alert(`Failed to load messages: ${error.message || 'Network error. Please check your internet connection and refresh the page.'}`);
+      alert(`Failed to load messages: ${error.message || 'Network error.'}`);
     } finally {
       setIsLoading(false);
     }
@@ -48,7 +139,6 @@ const ChatUI = () => {
       setIsSending(true);
       setSendingProgress({ type: 'text', status: 'sending', progress: 0 });
       
-      // Add temporary message to show sending status
       const tempMessage = {
         id: `temp-${Date.now()}`,
         content: text,
@@ -69,9 +159,8 @@ const ChatUI = () => {
       }
     } catch (error) {
       console.error('Failed to send message:', error);
-      // Remove temporary message and show error
       setMessages(prev => prev.filter(msg => !msg.is_sending));
-      alert(`Failed to send message: ${error.message || 'Network error. Please check your internet connection and try again.'}`);
+      alert(`Failed to send message: ${error.message || 'Network error.'}`);
     } finally {
       setIsSending(false);
       setSendingProgress(null);
@@ -83,7 +172,6 @@ const ChatUI = () => {
       setIsSending(true);
       setSendingProgress({ type: 'file', status: 'sending', progress: 0, fileName: file.name });
       
-      // Add temporary file message to show sending status
       const tempFileMessage = {
         id: `temp-file-${Date.now()}`,
         content: file.name,
@@ -107,9 +195,8 @@ const ChatUI = () => {
       }
     } catch (error) {
       console.error('Failed to upload file:', error);
-      // Remove temporary message and show error
       setMessages(prev => prev.filter(msg => !msg.is_sending));
-      alert(`Failed to upload file: ${error.message || 'Network error. Please check your internet connection and try again.'}`);
+      alert(`Failed to upload file: ${error.message || 'Network error.'}`);
     } finally {
       setIsSending(false);
       setSendingProgress(null);
@@ -135,7 +222,7 @@ const ChatUI = () => {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-background">
+    <div className="flex flex-col h-full min-h-0 bg-background relative">
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
         {messages.length === 0 ? (
