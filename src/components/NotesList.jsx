@@ -81,7 +81,7 @@ const NotesList = ({
             </p>
           </div>
         ) : (
-          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+          <div className="p-4 grid grid-cols-2 lg:grid-cols-1 gap-4">
             {notes.map((note) => (
               <div
                 key={note.id}

@@ -374,21 +374,22 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange,
       {/* Editor Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-border flex-shrink-0">
         <div className="flex items-center space-x-3">
+          {/* Mobile Back Button - Left aligned (Start) */}
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="lg:hidden flex items-center space-x-1.5 px-2 py-1.5 -ml-2 rounded-lg text-text_secondary hover:text-text_primary hover:bg-surface2 transition-all"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              <span className="text-sm font-bold">Back</span>
+            </button>
+          )}
+
           {/* Save status */}
           {renderSaveStatus()}
         </div>
 
         <div className="flex items-center space-x-1">
-          {/* Mobile Back Button - At the left side of this actions section */}
-          {onBack && (
-            <button
-              onClick={onBack}
-              className="lg:hidden flex items-center space-x-1.5 px-3 py-1.5 mr-3 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all border border-primary/20"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="text-xs font-bold">Back</span>
-            </button>
-          )}
 
 
           {/* View mode toggles */}
@@ -405,7 +406,7 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange,
           </button>
           <button
             onClick={() => setViewMode('split')}
-            className={`p-2 rounded-md transition-colors ${
+            className={`p-2 rounded-md transition-colors hidden lg:flex ${
               viewMode === 'split'
                 ? 'bg-primary/10 text-primary'
                 : 'text-text_tertiary hover:text-text_primary hover:bg-surface2'
@@ -439,7 +440,7 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange,
           {/* Full screen toggle */}
           <button
             onClick={toggleFullScreen}
-            className={`p-2 rounded-md transition-colors ${
+            className={`p-2 rounded-md transition-colors hidden lg:flex ${
               isFullScreen 
                 ? 'bg-primary/10 text-primary' 
                 : 'text-text_tertiary hover:text-text_primary hover:bg-surface2'
