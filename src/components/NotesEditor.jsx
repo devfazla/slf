@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Save, Check, Loader2, Eye, Edit3, Columns, FileText } from 'lucide-react';
 import MarkdownPreview from './MarkdownPreview';
-
+import MarkdownToolbar from './MarkdownToolbar';
+import ImagePromptDialog from './ImagePromptDialog';
 /**
  * NotesEditor — Right pane with title input, markdown textarea, and live preview.
  * Supports three view modes: edit-only, split, preview-only.
@@ -15,7 +16,9 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
   const [content, setContent] = useState('');
   const [viewMode, setViewMode] = useState('split'); // 'edit' | 'split' | 'preview'
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isImagePromptOpen, setIsImagePromptOpen] = useState(false);
   const saveTimeoutRef = useRef(null);
+  const textareaRef = useRef(null);
   const isInitialLoad = useRef(true);
   const lastSavedTitle = useRef('');
   const lastSavedContent = useRef('');
@@ -104,6 +107,67 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
     if (note) {
       onSave(note.id, { title, content });
     }
+  };
+
+  const applyFormatting = (before, after = '', defaultText = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    textarea.focus();
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    const replacement = `${before}${selectedText || defaultText}${after}`;
+
+    // Use execCommand to preserve undo history. This will trigger onChange if supported.
+    document.execCommand('insertText', false, replacement);
+    
+    // In some React setups, execCommand on controlled inputs might not fire onChange reliably.
+    // If we notice state sync issues, we can manually dispatch an Event, but let's try this first.
+    // Wait for state to possibly update, then set selection.
+    setTimeout(() => {
+      textarea.focus();
+      if (selectedText) {
+        textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length);
+      } else {
+        textarea.setSelectionRange(start + before.length + defaultText.length, start + before.length + defaultText.length);
+      }
+    }, 0);
+  };
+
+  const handleFormat = (action, value) => {
+    switch (action) {
+      case 'bold':
+        applyFormatting('**', '**', 'bold text');
+        break;
+      case 'italic':
+        applyFormatting('*', '*', 'italic text');
+        break;
+      case 'heading':
+        applyFormatting(`\n${'#'.repeat(value)} `, '', 'Heading');
+        break;
+      case 'ordered-list':
+        applyFormatting('\n1. ', '', 'List item');
+        break;
+      case 'unordered-list':
+        applyFormatting('\n- ', '', 'List item');
+        break;
+      case 'code':
+        applyFormatting('\n```\n', '\n```\n', 'code');
+        break;
+      case 'hr':
+        applyFormatting('\n---\n', '');
+        break;
+      case 'image':
+        setIsImagePromptOpen(true);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleAddImage = (url) => {
+    applyFormatting(`![Image](${url})`, '', '');
   };
 
   // Handle tab key in textarea for indentation
@@ -241,12 +305,18 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
         />
       </div>
 
+      {/* Toolbar */}
+      {viewMode !== 'preview' && (
+        <MarkdownToolbar onFormat={handleFormat} />
+      )}
+
       {/* Editor / Preview Panes */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden border-t border-border">
         {/* Editor Pane */}
         {(viewMode === 'edit' || viewMode === 'split') && (
           <div className={`flex flex-col min-h-0 ${viewMode === 'split' ? 'w-1/2 border-r border-border' : 'w-full'}`}>
             <textarea
+              ref={textareaRef}
               value={content}
               onChange={handleContentChange}
               onKeyDown={handleKeyDown}
@@ -269,6 +339,13 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <ImagePromptDialog 
+        isOpen={isImagePromptOpen}
+        onClose={() => setIsImagePromptOpen(false)}
+        onAdd={handleAddImage}
+      />
     </div>
   );
 };

@@ -32,6 +32,9 @@ function parseInline(text) {
   // Inline code (`code`)
   result = result.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
 
+  // Images ![alt](url) - must be before links to avoid conflicts
+  result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="md-image" loading="lazy" />');
+
   // Links ([text](url))
   result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>');
 
