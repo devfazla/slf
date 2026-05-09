@@ -252,6 +252,212 @@ body {
   box-shadow: var(--shadow-md);
 }
 
+/* Tables */
+.markdown-preview .md-table-wrapper {
+  overflow-x: auto;
+  margin: 0.75rem 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.markdown-preview .md-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.markdown-preview .md-table td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.markdown-preview .md-table tr:first-child td {
+  font-weight: 600;
+  background: var(--color-surface2);
+  color: var(--color-text-primary);
+}
+
+.markdown-preview .md-table tr:hover {
+  background: var(--color-surface);
+}
+
+/* KBD */
+.markdown-preview kbd {
+  display: inline-block;
+  padding: 0.125rem 0.4rem;
+  font-size: 0.8em;
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  color: var(--color-text-primary);
+  background: var(--color-surface2);
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 0 var(--color-border);
+  line-height: 1.4;
+}
+
+/* Highlight / Mark */
+.markdown-preview mark {
+  background: rgba(250, 204, 21, 0.3);
+  color: inherit;
+  padding: 0.05rem 0.2rem;
+  border-radius: 2px;
+}
+
+/* Underline */
+.markdown-preview u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Details / Collapsible */
+.markdown-preview .md-details {
+  margin: 0.75rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.markdown-preview .md-summary {
+  padding: 0.625rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.markdown-preview .md-summary:hover {
+  background: var(--color-surface2);
+}
+
+.markdown-preview .md-details > *:not(summary) {
+  padding: 0 1rem;
+}
+
+/* Mermaid code blocks */
+.markdown-preview .md-code-block.mermaid {
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+}
+
+.markdown-preview .md-code-block.mermaid::before {
+  content: '📊 Mermaid Diagram';
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-tertiary);
+  margin-bottom: 0.5rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Mermaid diagram container */
+.markdown-preview .mermaid {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin: 0.75rem 0;
+  overflow-x: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+/* Mermaid SVG styling */
+.markdown-preview .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Mermaid node styling */
+.markdown-preview .mermaid .node {
+  fill: var(--color-surface2);
+  stroke: var(--color-border);
+  stroke-width: 2px;
+}
+
+.markdown-preview .mermaid .node rect,
+.markdown-preview .mermaid .node circle,
+.markdown-preview .mermaid .node ellipse {
+  fill: var(--color-surface);
+  stroke: var(--color-primary);
+  stroke-width: 2px;
+}
+
+.markdown-preview .mermaid .node text {
+  fill: var(--color-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+}
+
+/* Mermaid edge styling */
+.markdown-preview .mermaid .edge {
+  stroke: var(--color-text-tertiary);
+  stroke-width: 2px;
+}
+
+.markdown-preview .mermaid .edge path {
+  stroke: var(--color-text-tertiary);
+}
+
+.markdown-preview .mermaid .edge marker {
+  fill: var(--color-text-tertiary);
+}
+
+/* Mermaid flowchart specific */
+.markdown-preview .mermaid .flowchartTitleText {
+  fill: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Dark theme support for Mermaid */
+[data-theme="dark"] .markdown-preview .mermaid .node rect,
+[data-theme="dark"] .markdown-preview .mermaid .node circle,
+[data-theme="dark"] .markdown-preview .mermaid .node ellipse {
+  fill: var(--color-surface);
+  stroke: var(--color-primary);
+}
+
+[data-theme="dark"] .markdown-preview .mermaid .edge {
+  stroke: var(--color-text-tertiary);
+}
+
+/* Task list */
+.markdown-preview .md-task-list {
+  list-style-type: none;
+  padding-left: 0.25rem;
+}
+
+.markdown-preview .md-task-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.35rem 0;
+}
+
+.markdown-preview .md-task-checkbox {
+  margin-top: 0.3rem;
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Sub / Superscript */
+.markdown-preview sub,
+.markdown-preview sup {
+  font-size: 0.75em;
+  color: var(--color-text-secondary);
+}
+
 /* ===== Utility: line-clamp ===== */
 .line-clamp-2 {
   display: -webkit-box;

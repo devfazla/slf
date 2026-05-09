@@ -2,21 +2,21 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Save, Check, Loader2, Eye, Edit3, Columns, FileText } from 'lucide-react';
 import MarkdownPreview from './MarkdownPreview';
 import MarkdownToolbar from './MarkdownToolbar';
-import ImagePromptDialog from './ImagePromptDialog';
+import UrlPromptDialog from './UrlPromptDialog';
 /**
  * NotesEditor — Right pane with title input, markdown textarea, and live preview.
  * Supports three view modes: edit-only, split, preview-only.
- * Auto-saves after 3 seconds of inactivity.
+ * Auto-saves after 30 seconds of inactivity.
  */
 
-const AUTO_SAVE_DELAY = 3000; // 3 seconds
+const AUTO_SAVE_DELAY = 30000; // 30 seconds
 
 const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [viewMode, setViewMode] = useState('split'); // 'edit' | 'split' | 'preview'
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isImagePromptOpen, setIsImagePromptOpen] = useState(false);
+  const [urlPrompt, setUrlPrompt] = useState({ isOpen: false, type: 'image' });
   const saveTimeoutRef = useRef(null);
   const textareaRef = useRef(null);
   const isInitialLoad = useRef(true);
@@ -35,9 +35,24 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
       setHasUnsavedChanges(false);
       isInitialLoad.current = true;
     }
-  }, [note?.id]);
+  }, [note?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-save with debounce
+  // Global auto-focus when typing
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+      if (e.key.length === 1 && viewMode !== 'preview') {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [viewMode]);
+
+  // Auto-save with debounce - only saves after 5 seconds of inactivity
   const triggerAutoSave = useCallback((newTitle, newContent) => {
     // Check if content actually changed compared to last saved values
     const titleChanged = newTitle !== lastSavedTitle.current;
@@ -61,8 +76,9 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
       clearTimeout(saveTimeoutRef.current);
     }
 
+    // Set new timeout - will only execute if no further activity occurs
     saveTimeoutRef.current = setTimeout(() => {
-      if (note) {
+      if (note && (newTitle !== lastSavedTitle.current || newContent !== lastSavedContent.current)) {
         lastSavedTitle.current = newTitle;
         lastSavedContent.current = newContent;
         onSave(note.id, { title: newTitle, content: newContent });
@@ -137,53 +153,134 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
 
   const handleFormat = (action, value) => {
     switch (action) {
-      case 'bold':
-        applyFormatting('**', '**', 'bold text');
-        break;
-      case 'italic':
-        applyFormatting('*', '*', 'italic text');
-        break;
-      case 'heading':
-        applyFormatting(`\n${'#'.repeat(value)} `, '', 'Heading');
-        break;
-      case 'ordered-list':
-        applyFormatting('\n1. ', '', 'List item');
-        break;
-      case 'unordered-list':
-        applyFormatting('\n- ', '', 'List item');
-        break;
-      case 'code':
-        applyFormatting('\n```\n', '\n```\n', 'code');
-        break;
-      case 'hr':
-        applyFormatting('\n---\n', '');
-        break;
-      case 'image':
-        setIsImagePromptOpen(true);
-        break;
-      default:
-        break;
+      case 'bold': applyFormatting('**', '**', 'bold text'); break;
+      case 'italic': applyFormatting('*', '*', 'italic text'); break;
+      case 'bold-italic': applyFormatting('***', '***', 'bold italic text'); break;
+      case 'strikethrough': applyFormatting('~~', '~~', 'strikethrough text'); break;
+      case 'underline': applyFormatting('<u>', '</u>', 'underline text'); break;
+      case 'highlight': applyFormatting('==', '==', 'highlighted text'); break;
+      case 'subscript': applyFormatting('~', '~', 'sub'); break;
+      case 'superscript': applyFormatting('^', '^', 'sup'); break;
+      case 'heading': applyFormatting(`\n${'#'.repeat(value)} `, '', 'Heading'); break;
+      case 'ordered-list': applyFormatting('\n1. ', '', 'List item'); break;
+      case 'unordered-list': applyFormatting('\n- ', '', 'List item'); break;
+      case 'task-list': applyFormatting('\n- [ ] ', '', 'Task item'); break;
+      case 'blockquote': applyFormatting('\n> ', '', 'Quote'); break;
+      case 'code': applyFormatting('\n```\n', '\n```\n', 'code'); break;
+      case 'inline-code': applyFormatting('`', '`', 'inline code'); break;
+      case 'table': applyFormatting('\n| Column 1 | Column 2 |\n| -------- | -------- |\n| Text     | Text     |\n', ''); break;
+      case 'details': applyFormatting('\n<details>\n<summary>Click to expand</summary>\n\n', '\n\n</details>\n', 'Hidden content'); break;
+      case 'mermaid': applyFormatting('\n```mermaid\ngraph TD\n    A[Start] --> B[End]\n```\n', ''); break;
+      case 'hr': applyFormatting('\n---\n', ''); break;
+      case 'kbd': applyFormatting('<kbd>', '</kbd>', 'Key'); break;
+      case 'escape': applyFormatting('\\', '', ''); break;
+      case 'image': setUrlPrompt({ isOpen: true, type: 'image' }); break;
+      case 'link': setUrlPrompt({ isOpen: true, type: 'link' }); break;
+      default: break;
     }
   };
 
-  const handleAddImage = (url) => {
-    applyFormatting(`![Image](${url})`, '', '');
+  const handleAddUrl = (url, alt) => {
+    if (urlPrompt.type === 'image') {
+      applyFormatting(`![${alt || 'Image'}](${url})`, '', '');
+    } else {
+      applyFormatting(`[${alt || 'Link text'}](${url})`, '', '');
+    }
   };
 
-  // Handle tab key in textarea for indentation
+  // Handle keydown in textarea for shortcuts, lists, and tables
   const handleKeyDown = (e) => {
+    // Keyboard shortcuts
+    if (e.ctrlKey) {
+      if (e.key === 'b') { e.preventDefault(); handleFormat('bold'); return; }
+      if (e.key === 'i') { e.preventDefault(); handleFormat('italic'); return; }
+      if (e.key === 'u') { e.preventDefault(); handleFormat('underline'); return; }
+      if (e.key === 'k') { e.preventDefault(); handleFormat('link'); return; }
+      if (e.key === 'e') { e.preventDefault(); handleFormat('inline-code'); return; }
+      if (e.shiftKey) {
+        if (e.key.toLowerCase() === 'x') { e.preventDefault(); handleFormat('strikethrough'); return; }
+        if (e.key.toLowerCase() === 'k') { e.preventDefault(); handleFormat('image'); return; }
+        if (e.key.toLowerCase() === 'c') { e.preventDefault(); handleFormat('code'); return; }
+      }
+    }
+
+    const start = e.target.selectionStart;
+    const end = e.target.selectionEnd;
+    
+    // Auto-continue lists and table rows on Enter
+    if (e.key === 'Enter') {
+      const textBeforeCursor = content.substring(0, start);
+      const lines = textBeforeCursor.split('\n');
+      const currentLine = lines[lines.length - 1];
+
+      // Match list markers: - [ ] , - [x] , - , * , 1. 
+      const listMatch = currentLine.match(/^(\s*)(-\s\[[ x]\]\s|-\s|\*\s|\d+\.\s)(.*)$/);
+      
+      if (listMatch) {
+        e.preventDefault();
+        const [, indent, marker, text] = listMatch; // eslint-disable-line no-unused-vars
+        if (!text.trim()) {
+          // Double enter on empty list item: exit list
+          const newContent = content.substring(0, start - marker.length - indent.length) + content.substring(end);
+          setContent(newContent);
+          triggerAutoSave(title, newContent);
+          requestAnimationFrame(() => {
+            e.target.selectionStart = e.target.selectionEnd = start - marker.length - indent.length;
+          });
+        } else {
+          // Continue list
+          let nextMarker = marker;
+          const numberMatch = marker.match(/^(\d+)\.\s$/);
+          if (numberMatch) {
+            nextMarker = `${parseInt(numberMatch[1], 10) + 1}. `;
+          }
+          if (marker.includes('[x]')) {
+            nextMarker = nextMarker.replace('[x]', '[ ]');
+          }
+          applyFormatting(`\n${indent}${nextMarker}`, '');
+        }
+        return;
+      }
+
+      // Basic Table automation // TODO: Fully automate table column alignment later
+      const tableMatch = currentLine.match(/^(\s*\|.*\|)\s*$/);
+      if (tableMatch) {
+        const pipeCount = (currentLine.match(/\|/g) || []).length;
+        if (pipeCount > 1) {
+          e.preventDefault();
+          const nextRow = '\n' + '|   '.repeat(pipeCount - 1) + '|';
+          applyFormatting(nextRow, '');
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 3;
+            }
+          }, 0);
+          return;
+        }
+      }
+    }
+
+    // Table Tab navigation
+    if (e.key === 'Tab' && !e.shiftKey) {
+      const textBeforeCursor = content.substring(0, start);
+      const lines = textBeforeCursor.split('\n');
+      const currentLine = lines[lines.length - 1];
+      
+      if (currentLine.includes('|')) {
+        e.preventDefault();
+        const textAfterCursor = content.substring(end);
+        const nextPipeIdx = textAfterCursor.indexOf('|');
+        if (nextPipeIdx !== -1) {
+          const nextPos = end + nextPipeIdx + 1;
+          e.target.selectionStart = e.target.selectionEnd = nextPos + 1;
+        }
+        return;
+      }
+    }
+
     if (e.key === 'Tab') {
       e.preventDefault();
-      const start = e.target.selectionStart;
-      const end = e.target.selectionEnd;
-      const newContent = content.substring(0, start) + '  ' + content.substring(end);
-      setContent(newContent);
-      onContentChange?.(newContent);
-      triggerAutoSave(title, newContent);
-      // Restore cursor position after React re-renders
-      requestAnimationFrame(() => {
-        e.target.selectionStart = e.target.selectionEnd = start + 2;
-      });
+      applyFormatting('  ', '');
     }
   };
 
@@ -237,8 +334,34 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
     }
   };
 
+  const handleToggleTask = (lineIndex) => {
+    const lines = content.split('\n');
+    const line = lines[lineIndex];
+    if (line.includes('[ ]')) {
+      lines[lineIndex] = line.replace('[ ]', '[x]');
+    } else if (line.includes('[x]')) {
+      lines[lineIndex] = line.replace('[x]', '[ ]');
+    } else if (line.includes('[X]')) {
+      lines[lineIndex] = line.replace('[X]', '[ ]');
+    }
+    const newContent = lines.join('\n');
+    setContent(newContent);
+    onContentChange?.(newContent);
+    triggerAutoSave(title, newContent);
+  };
+
+  // Save on outer click
+  const handleBlur = (e) => {
+    // If the new focus target is outside the NotesEditor component, save immediately
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      if (hasUnsavedChanges) {
+        handleManualSave();
+      }
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col h-full bg-background min-w-0">
+    <div className="flex-1 flex flex-col h-full bg-background min-w-0" onBlur={handleBlur}>
       {/* Editor Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-border flex-shrink-0">
         <div className="flex items-center space-x-3">
@@ -334,17 +457,18 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
               {viewMode === 'split' && (
                 <p className="text-[10px] uppercase tracking-wider text-text_tertiary font-semibold mb-3">Preview</p>
               )}
-              <MarkdownPreview content={content} />
+              <MarkdownPreview content={content} onToggleTask={handleToggleTask} />
             </div>
           </div>
         )}
       </div>
 
       {/* Modals */}
-      <ImagePromptDialog 
-        isOpen={isImagePromptOpen}
-        onClose={() => setIsImagePromptOpen(false)}
-        onAdd={handleAddImage}
+      <UrlPromptDialog 
+        isOpen={urlPrompt.isOpen}
+        type={urlPrompt.type}
+        onClose={() => setUrlPrompt({ ...urlPrompt, isOpen: false })}
+        onAdd={handleAddUrl}
       />
     </div>
   );

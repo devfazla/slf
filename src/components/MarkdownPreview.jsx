@@ -1,9 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
+import mermaid from 'mermaid';
 
 /**
  * Lightweight custom markdown parser and renderer.
  * Supports: headings, bold, italic, lists, code blocks, inline code,
  * links, blockquotes, horizontal rules, and paragraphs.
+ * Advanced: tables, highlight, subscript, superscript, kbd, details, task lists.
  */
 
 function escapeHtml(text) {
@@ -17,6 +19,9 @@ function escapeHtml(text) {
 function parseInline(text) {
   let result = escapeHtml(text);
 
+  // Escaped characters: replace backslash + char
+  result = result.replace(/\\([*`_~^|<])/g, (match, p1) => `&#${p1.charCodeAt(0)};`);
+
   // Bold + Italic (***text*** or ___text___)
   result = result.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
   result = result.replace(/___(.*?)___/g, '<strong><em>$1</em></strong>');
@@ -29,24 +34,36 @@ function parseInline(text) {
   result = result.replace(/\*(.*?)\*/g, '<em>$1</em>');
   result = result.replace(/(?<!\w)_(.*?)_(?!\w)/g, '<em>$1</em>');
 
+  // Strikethrough (~~text~~)
+  result = result.replace(/~~(.*?)~~/g, '<del>$1</del>');
+
+  // Highlight (==text==)
+  result = result.replace(/==(.*?)==/g, '<mark>$1</mark>');
+
+  // Subscript (~text~)
+  result = result.replace(/~(.*?)~/g, '<sub>$1</sub>');
+
+  // Superscript (^text^)
+  result = result.replace(/\^(.*?)\^/g, '<sup>$1</sup>');
+
   // Inline code (`code`)
   result = result.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
 
-  // Images ![alt](url) - must be before links to avoid conflicts
+  // Images ![alt](url)
   result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="md-image" loading="lazy" />');
 
   // Links ([text](url))
   result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>');
 
-  // Strikethrough (~~text~~)
-  result = result.replace(/~~(.*?)~~/g, '<del>$1</del>');
+  // Restore HTML tags allowed
+  result = result.replace(/&lt;kbd&gt;(.*?)&lt;\/kbd&gt;/gi, '<kbd>$1</kbd>');
+  result = result.replace(/&lt;u&gt;(.*?)&lt;\/u&gt;/gi, '<u>$1</u>');
 
   return result;
 }
 
 function parseMarkdown(markdown) {
   if (!markdown) return '';
-
   const lines = markdown.split('\n');
   const html = [];
   let inCodeBlock = false;
@@ -56,136 +73,265 @@ function parseMarkdown(markdown) {
   let listType = '';
   let inBlockquote = false;
   let blockquoteContent = [];
+  let inTable = false;
+  let inDetails = false;
 
-  const closeList = () => {
-    if (inList) {
-      html.push(listType === 'ul' ? '</ul>' : '</ol>');
-      inList = false;
-      listType = '';
-    }
-  };
-
-  const closeBlockquote = () => {
-    if (inBlockquote) {
-      html.push(`<blockquote class="md-blockquote">${blockquoteContent.map(l => parseInline(l)).join('<br/>')}</blockquote>`);
-      inBlockquote = false;
-      blockquoteContent = [];
-    }
+  const closeBlocks = () => {
+    if (inList) { html.push(listType === 'ul' ? '</ul>' : '</ol>'); inList = false; listType = ''; }
+    if (inBlockquote) { html.push(`<blockquote class="md-blockquote">${blockquoteContent.join('<br/>')}</blockquote>`); inBlockquote = false; blockquoteContent = []; }
+    if (inTable) { html.push('</tbody></table></div>'); inTable = false; }
   };
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Code block toggle
-    if (line.trimStart().startsWith('```')) {
-      if (!inCodeBlock) {
-        closeList();
-        closeBlockquote();
-        inCodeBlock = true;
-        codeBlockLang = line.trimStart().slice(3).trim();
-        codeBlockContent = [];
-      } else {
-        html.push(`<pre class="md-code-block"><code${codeBlockLang ? ` class="language-${escapeHtml(codeBlockLang)}"` : ''}>${escapeHtml(codeBlockContent.join('\n'))}</code></pre>`);
+    if (inCodeBlock) {
+      if (line.trimStart().startsWith('```')) {
+        const isMermaid = codeBlockLang === 'mermaid';
+        if (isMermaid) {
+          // Keep raw content unescaped for Mermaid to parse
+          html.push(`<div class="mermaid">${codeBlockContent.join('\n')}</div>`);
+        } else {
+          html.push(`<pre class="md-code-block"><code${codeBlockLang ? ` class="language-${escapeHtml(codeBlockLang)}"` : ''}>${escapeHtml(codeBlockContent.join('\n'))}</code></pre>`);
+        }
         inCodeBlock = false;
         codeBlockLang = '';
+      } else {
+        codeBlockContent.push(line);
       }
       continue;
     }
 
-    if (inCodeBlock) {
-      codeBlockContent.push(line);
+    if (line.trimStart().startsWith('```')) {
+      closeBlocks();
+      inCodeBlock = true;
+      codeBlockLang = line.trimStart().slice(3).trim();
+      codeBlockContent = [];
       continue;
     }
 
-    // Empty line
+    if (line.trim() === '&lt;details&gt;' || line.trim() === '<details>') {
+      closeBlocks();
+      html.push('<details class="md-details">');
+      inDetails = true;
+      continue;
+    }
+    if (line.trim() === '&lt;/details&gt;' || line.trim() === '</details>') {
+      closeBlocks();
+      html.push('</details>');
+      inDetails = false;
+      continue;
+    }
+    if (inDetails && (line.trim().startsWith('&lt;summary&gt;') || line.trim().startsWith('<summary>'))) {
+      const summaryText = line.replace(/&lt;summary&gt;|<summary>/, '').replace(/&lt;\/summary&gt;|<\/summary>/, '');
+      html.push(`<summary class="md-summary">${parseInline(summaryText)}</summary>`);
+      continue;
+    }
+
     if (line.trim() === '') {
-      closeList();
-      closeBlockquote();
+      closeBlocks();
+      if (!inDetails) { html.push('<br/>'); }
       continue;
     }
 
-    // Horizontal rule
+    // Tables
+    if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+      const cells = line.trim().slice(1, -1).split('|');
+      if (cells.every(c => /^[-:\s]+$/.test(c))) {
+        continue;
+      }
+      if (!inTable) {
+        closeBlocks();
+        inTable = true;
+        html.push('<div class="md-table-wrapper"><table class="md-table"><tbody>');
+      }
+      html.push(`<tr>${cells.map(c => `<td>${parseInline(c.trim())}</td>`).join('')}</tr>`);
+      continue;
+    }
+
     if (/^(-{3,}|_{3,}|\*{3,})$/.test(line.trim())) {
-      closeList();
-      closeBlockquote();
+      closeBlocks();
       html.push('<hr class="md-hr" />');
       continue;
     }
 
-    // Headings
     const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
     if (headingMatch) {
-      closeList();
-      closeBlockquote();
+      closeBlocks();
       const level = headingMatch[1].length;
       html.push(`<h${level} class="md-h${level}">${parseInline(headingMatch[2])}</h${level}>`);
       continue;
     }
 
-    // Blockquote
-    if (line.trimStart().startsWith('> ')) {
-      closeList();
+    // Blockquote handling with visual nesting support based on number of '>'
+    const bqMatch = line.match(/^(\s*)(>+)\s*(.*)$/);
+    if (bqMatch) {
       if (!inBlockquote) {
+        closeBlocks();
         inBlockquote = true;
         blockquoteContent = [];
       }
-      blockquoteContent.push(line.trimStart().slice(2));
+      const level = bqMatch[2].length;
+      if (level > 1) {
+        blockquoteContent.push(`<div class="md-blockquote" style="margin-left: ${(level - 1) * 1.5}rem; margin-top: 0.5rem; margin-bottom: 0.5rem;">${parseInline(bqMatch[3])}</div>`);
+      } else {
+        blockquoteContent.push(parseInline(bqMatch[3]));
+      }
       continue;
     } else {
-      closeBlockquote();
+      if (inBlockquote) { closeBlocks(); }
     }
 
-    // Unordered list
+    // Task list handling with visual nesting support based on whitespace indent
+    const taskMatch = line.match(/^(\s*)([-*+])\s+\[([ xX])\]\s+(.+)$/);
+    if (taskMatch) {
+      if (!inList || listType !== 'ul') {
+        closeBlocks();
+        html.push('<ul class="md-ul md-task-list">');
+        inList = true;
+        listType = 'ul';
+      }
+      const isChecked = taskMatch[3].toLowerCase() === 'x';
+      const indent = taskMatch[1].length * 10; // visual indent in px
+      html.push(`<li class="md-task-list-item flex items-start space-x-2" style="margin-left: ${indent}px;"><input type="checkbox" class="md-task-checkbox mt-1" data-line="${i}" ${isChecked ? 'checked' : ''} /> <span class="${isChecked ? 'line-through text-text_tertiary' : ''}">${parseInline(taskMatch[4])}</span></li>`);
+      continue;
+    }
+
+    // Unordered list handling with visual nesting support based on whitespace indent
     const ulMatch = line.match(/^(\s*)([-*+])\s+(.+)$/);
     if (ulMatch) {
-      closeBlockquote();
       if (!inList || listType !== 'ul') {
-        closeList();
+        closeBlocks();
         html.push('<ul class="md-ul">');
         inList = true;
         listType = 'ul';
       }
-      html.push(`<li>${parseInline(ulMatch[3])}</li>`);
+      const indent = ulMatch[1].length * 10;
+      html.push(`<li style="margin-left: ${indent}px;">${parseInline(ulMatch[3])}</li>`);
       continue;
     }
 
-    // Ordered list
+    // Ordered list handling with visual nesting support based on whitespace indent
     const olMatch = line.match(/^(\s*)\d+\.\s+(.+)$/);
     if (olMatch) {
-      closeBlockquote();
       if (!inList || listType !== 'ol') {
-        closeList();
+        closeBlocks();
         html.push('<ol class="md-ol">');
         inList = true;
         listType = 'ol';
       }
-      html.push(`<li>${parseInline(olMatch[2])}</li>`);
+      const indent = olMatch[1].length * 10;
+      html.push(`<li style="margin-left: ${indent}px;">${parseInline(olMatch[2])}</li>`);
       continue;
     }
 
-    // Regular paragraph
-    closeList();
-    closeBlockquote();
-    html.push(`<p class="md-p">${parseInline(line)}</p>`);
+    if (!inList && !inBlockquote && !inTable) {
+      html.push(`<p class="md-p">${parseInline(line)}</p>`);
+    } else {
+      closeBlocks();
+      html.push(`<p class="md-p">${parseInline(line)}</p>`);
+    }
   }
 
-  // Close any open blocks
-  if (inCodeBlock) {
-    html.push(`<pre class="md-code-block"><code>${escapeHtml(codeBlockContent.join('\n'))}</code></pre>`);
-  }
-  closeList();
-  closeBlockquote();
+  if (inCodeBlock) { html.push(`<pre class="md-code-block"><code>${escapeHtml(codeBlockContent.join('\n'))}</code></pre>`); }
+  closeBlocks();
+  if (inDetails) { html.push('</details>'); }
 
   return html.join('\n');
 }
 
-const MarkdownPreview = ({ content = '' }) => {
+const MarkdownPreview = ({ content = '', onToggleTask }) => {
   const renderedHtml = useMemo(() => parseMarkdown(content), [content]);
+  const previewRef = useRef(null);
+
+  useEffect(() => {
+    mermaid.initialize({ 
+      startOnLoad: false, 
+      theme: 'default', 
+      securityLevel: 'loose',
+      fontFamily: 'monospace',
+      fontSize: 16,
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        curve: 'basis'
+      },
+      themeVariables: {
+        primaryColor: '#3b82f6',
+        primaryTextColor: '#1f2937',
+        primaryBorderColor: '#e5e7eb',
+        lineColor: '#6b7280',
+        secondaryColor: '#f3f4f6',
+        tertiaryColor: '#ffffff'
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (previewRef.current) {
+      // Add delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        const mermaidElements = previewRef.current.querySelectorAll('.mermaid');
+        
+        mermaidElements.forEach(async (element, index) => {
+          try {
+            // Check if element is already rendered (contains SVG)
+            if (element.querySelector('svg')) {
+              console.log(`Mermaid element ${index} already rendered, skipping`);
+              return;
+            }
+            
+            // Store the original Mermaid content before any manipulation
+            const originalContent = element.textContent || element.innerText;
+            const graphDefinition = originalContent.trim();
+            console.log(`Processing Mermaid ${index}:`, graphDefinition);
+            
+            if (!graphDefinition) {
+              console.warn(`Mermaid element ${index} has no content`);
+              return;
+            }
+            
+            // Generate unique ID for this diagram
+            const elementId = `mermaid-diagram-${Date.now()}-${index}`;
+            
+            // Render diagram to SVG
+            const { svg } = await mermaid.render(elementId, graphDefinition);
+            
+            // Insert the SVG with proper styling
+            element.innerHTML = svg;
+            
+            console.log(`Mermaid diagram ${index} rendered successfully`);
+          } catch (err) {
+            console.error(`Mermaid error for element ${index}:`, err);
+            // Fallback: show raw code with styling
+            const originalContent = element.textContent || element.innerText;
+            const graphDefinition = originalContent.trim();
+            element.style.background = 'var(--color-surface2)';
+            element.style.border = '1px solid var(--color-border)';
+            element.style.padding = '1rem';
+            element.style.borderRadius = 'var(--radius-md)';
+            element.innerHTML = `<pre style="margin: 0; font-family: monospace; font-size: 0.875rem; white-space: pre-wrap;">${escapeHtml(graphDefinition)}</pre>`;
+          }
+        });
+      }, 200); // 200ms delay
+    }
+  }, [renderedHtml]);
+
+  const handleClick = (e) => {
+    if (e.target.classList.contains('md-task-checkbox')) {
+      const lineIndex = parseInt(e.target.getAttribute('data-line'), 10);
+      if (!isNaN(lineIndex) && onToggleTask) {
+        onToggleTask(lineIndex);
+      }
+    }
+  };
 
   return (
     <div
+      ref={previewRef}
       className="markdown-preview prose-custom"
       dangerouslySetInnerHTML={{ __html: renderedHtml }}
+      onClick={handleClick}
     />
   );
 };

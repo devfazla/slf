@@ -64,6 +64,18 @@ const Notes = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Global Ctrl+N shortcut for new note
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        handleCreateNote();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const selectedNote = notes.find(n => n.id === selectedNoteId) || null;
 
   const handleSelectNote = (noteId) => {
@@ -71,6 +83,14 @@ const Notes = () => {
     setSaveStatus(null);
     setMobileShowEditor(true);
   };
+
+  // Sync currentTitle and currentContent when selected note changes to prevent saving empty strings if unchanged
+  useEffect(() => {
+    if (selectedNote) {
+      setCurrentTitle(selectedNote.title || '');
+      setCurrentContent(selectedNote.content || '');
+    }
+  }, [selectedNote?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreateNote = async () => {
     try {
