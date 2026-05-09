@@ -54,7 +54,8 @@ const ChatUI = () => {
         content: text,
         is_file: false,
         timestamp: new Date().toISOString(),
-        is_sending: true
+        is_sending: true,
+        message_type: 'user'
       };
       setMessages(prev => [...prev, tempMessage]);
 
@@ -91,7 +92,8 @@ const ChatUI = () => {
         file_size: file.size,
         file_type: file.type,
         timestamp: new Date().toISOString(),
-        is_sending: true
+        is_sending: true,
+        message_type: 'user'
       };
       setMessages(prev => [...prev, tempFileMessage]);
 

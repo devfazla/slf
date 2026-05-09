@@ -54,7 +54,8 @@ export const useTelegram = () => {
         content: text,
         is_file: false,
         telegram_message_id: telegramResponse.result.message_id,
-        timestamp: messageData.timestamp
+        timestamp: messageData.timestamp,
+        message_type: messageData.message_type
       };
 
     } catch (err) {
@@ -119,7 +120,8 @@ export const useTelegram = () => {
         file_size: document.file_size,
         telegram_file_id: document.file_id,
         telegram_message_id: telegramResponse.result.message_id,
-        timestamp: fileData.timestamp
+        timestamp: fileData.timestamp,
+        message_type: fileData.message_type
       };
 
     } catch (err) {
