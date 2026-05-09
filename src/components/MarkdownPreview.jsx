@@ -1,5 +1,4 @@
-import React, { useMemo, useEffect, useRef } from 'react';
-import mermaid from 'mermaid';
+import React, { useMemo } from 'react';
 
 /**
  * Lightweight custom markdown parser and renderer.
@@ -87,13 +86,7 @@ function parseMarkdown(markdown) {
 
     if (inCodeBlock) {
       if (line.trimStart().startsWith('```')) {
-        const isMermaid = codeBlockLang === 'mermaid';
-        if (isMermaid) {
-          // Keep raw content unescaped for Mermaid to parse
-          html.push(`<div class="mermaid">${codeBlockContent.join('\n')}</div>`);
-        } else {
-          html.push(`<pre class="md-code-block"><code${codeBlockLang ? ` class="language-${escapeHtml(codeBlockLang)}"` : ''}>${escapeHtml(codeBlockContent.join('\n'))}</code></pre>`);
-        }
+        html.push(`<pre class="md-code-block"><code${codeBlockLang ? ` class="language-${escapeHtml(codeBlockLang)}"` : ''}>${escapeHtml(codeBlockContent.join('\n'))}</code></pre>`);
         inCodeBlock = false;
         codeBlockLang = '';
       } else {
@@ -242,80 +235,6 @@ function parseMarkdown(markdown) {
 
 const MarkdownPreview = ({ content = '', onToggleTask }) => {
   const renderedHtml = useMemo(() => parseMarkdown(content), [content]);
-  const previewRef = useRef(null);
-
-  useEffect(() => {
-    mermaid.initialize({ 
-      startOnLoad: false, 
-      theme: 'default', 
-      securityLevel: 'loose',
-      fontFamily: 'monospace',
-      fontSize: 16,
-      flowchart: {
-        useMaxWidth: true,
-        htmlLabels: true,
-        curve: 'basis'
-      },
-      themeVariables: {
-        primaryColor: '#3b82f6',
-        primaryTextColor: '#1f2937',
-        primaryBorderColor: '#e5e7eb',
-        lineColor: '#6b7280',
-        secondaryColor: '#f3f4f6',
-        tertiaryColor: '#ffffff'
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    if (previewRef.current) {
-      // Add delay to ensure DOM is fully rendered
-      setTimeout(() => {
-        const mermaidElements = previewRef.current.querySelectorAll('.mermaid');
-        
-        mermaidElements.forEach(async (element, index) => {
-          try {
-            // Check if element is already rendered (contains SVG)
-            if (element.querySelector('svg')) {
-              console.log(`Mermaid element ${index} already rendered, skipping`);
-              return;
-            }
-            
-            // Store the original Mermaid content before any manipulation
-            const originalContent = element.textContent || element.innerText;
-            const graphDefinition = originalContent.trim();
-            console.log(`Processing Mermaid ${index}:`, graphDefinition);
-            
-            if (!graphDefinition) {
-              console.warn(`Mermaid element ${index} has no content`);
-              return;
-            }
-            
-            // Generate unique ID for this diagram
-            const elementId = `mermaid-diagram-${Date.now()}-${index}`;
-            
-            // Render diagram to SVG
-            const { svg } = await mermaid.render(elementId, graphDefinition);
-            
-            // Insert the SVG with proper styling
-            element.innerHTML = svg;
-            
-            console.log(`Mermaid diagram ${index} rendered successfully`);
-          } catch (err) {
-            console.error(`Mermaid error for element ${index}:`, err);
-            // Fallback: show raw code with styling
-            const originalContent = element.textContent || element.innerText;
-            const graphDefinition = originalContent.trim();
-            element.style.background = 'var(--color-surface2)';
-            element.style.border = '1px solid var(--color-border)';
-            element.style.padding = '1rem';
-            element.style.borderRadius = 'var(--radius-md)';
-            element.innerHTML = `<pre style="margin: 0; font-family: monospace; font-size: 0.875rem; white-space: pre-wrap;">${escapeHtml(graphDefinition)}</pre>`;
-          }
-        });
-      }, 200); // 200ms delay
-    }
-  }, [renderedHtml]);
 
   const handleClick = (e) => {
     if (e.target.classList.contains('md-task-checkbox')) {
@@ -328,7 +247,6 @@ const MarkdownPreview = ({ content = '', onToggleTask }) => {
 
   return (
     <div
-      ref={previewRef}
       className="markdown-preview prose-custom"
       dangerouslySetInnerHTML={{ __html: renderedHtml }}
       onClick={handleClick}

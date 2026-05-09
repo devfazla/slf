@@ -161,7 +161,6 @@ const MarkdownToolbar = ({ onFormat }) => {
           <ToolbarButton icon={Code} onClick={() => onFormat('code')} title="Code Block (Ctrl+Shift+C)" />
           <ToolbarButton icon={Table} onClick={() => onFormat('table')} title="Table" />
           <ToolbarButton icon={FoldVertical} onClick={() => onFormat('details')} title="Collapsible Section" />
-          <ToolbarButton icon={GitMerge} onClick={() => onFormat('mermaid')} title="Mermaid Diagram" />
           <ToolbarButton icon={Minus} onClick={() => onFormat('hr')} title="Horizontal Rule" />
         </div>
       </ToolbarGroup>

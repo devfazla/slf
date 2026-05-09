@@ -170,7 +170,6 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange 
       case 'inline-code': applyFormatting('`', '`', 'inline code'); break;
       case 'table': applyFormatting('\n| Column 1 | Column 2 |\n| -------- | -------- |\n| Text     | Text     |\n', ''); break;
       case 'details': applyFormatting('\n<details>\n<summary>Click to expand</summary>\n\n', '\n\n</details>\n', 'Hidden content'); break;
-      case 'mermaid': applyFormatting('\n```mermaid\ngraph TD\n    A[Start] --> B[End]\n```\n', ''); break;
       case 'hr': applyFormatting('\n---\n', ''); break;
       case 'kbd': applyFormatting('<kbd>', '</kbd>', 'Key'); break;
       case 'escape': applyFormatting('\\', '', ''); break;

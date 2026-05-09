@@ -32,11 +32,10 @@ SelfDesk is your **advanced** personal workspace that combines *powerful* note-t
 - [External Link](https://github.com)
 - [Link with title](https://example.com "Example Website")
 - [Relative Link](./other-file.md)
-- <https://example.com> - Auto-linked URL
 
 ### Images
-![SelfDesk Logo](https://via.placeholder.com/300x100/4F46E5/FFFFFF?text=SelfDesk)
-![Image with alt text and title](https://via.placeholder.com/200x150/10B981/FFFFFF?text=Preview "Preview Image")
+![SelfDesk Logo](https://avatars.githubusercontent.com/u/193323632?s=48&v=4)
+![Image with alt text and title](https://github.com/devfazla/free-writer/raw/main/assets/images/fazla.png)
 
 ## 📋 Lists
 
@@ -104,17 +103,6 @@ npm install selfdesk
 npm run dev
 ```
 
-### Code with Syntax Highlighting
-```jsx
-import React from 'react';
-
-const Welcome = () => {
-  return <h1>Welcome to SelfDesk!</h1>;
-};
-
-export default Welcome;
-```
-
 ## 🎨 Advanced Features
 
 ### Blockquotes
@@ -139,50 +127,14 @@ export default Welcome;
 <summary>📖 Click to expand SelfDesk features</summary>
 
 SelfDesk includes:
-- **Advanced Markdown Editor** with live preview
-- **Real-time Auto-save** after 30 seconds of inactivity
-- **Secure Chat** via Telegram Bot API
-- **File Storage** with folder organization
-- **Multi-theme Support** with 5 built-in themes
-- **Password Protection** with encrypted storage
+   - **Advanced Markdown Editor** with live preview
+   - **Real-time Auto-save** after 30 seconds of inactivity
+   - **Secure Chat** via Telegram Bot API
+   - **File Storage** with folder organization
+   - **Multi-theme Support** with 5 built-in themes
+   - **Password Protection** with encrypted storage
 
 </details>
-
-### Mermaid Diagrams
-```mermaid
-graph TD
-    A[SelfDesk] --> B[Notes Editor]
-    A --> C[Chat System]
-    A --> D[File Explorer]
-    A --> E[Settings]
-    
-    B --> F[Markdown]
-    B --> G[Live Preview]
-    B --> H[Auto-save]
-    
-    C --> I[Telegram Bot]
-    C --> J[File Sharing]
-    
-    D --> K[Folders]
-    D --> L[Telegram Storage]
-    
-    E --> M[Themes]
-    E --> N[Security]
-```
-
-```mermaid
-flowchart LR
-    User --> Login
-    Login --> Dashboard
-    Dashboard --> Notes
-    Dashboard --> Chat
-    Dashboard --> Files
-    Dashboard --> Settings
-    
-    Notes --> Editor
-    Editor --> Preview
-    Preview --> Save
-```
 
 ## 🌟 Special Characters and Escaping
 
@@ -190,7 +142,6 @@ flowchart LR
 - \*Not italic\* (escaped asterisks)
 - \_Not underscore_\_ (escaped underscores)
 - \`\`Not code\`\` (escaped backticks)
-- \[Not a link\](https://example.com) (escaped brackets)
 
 ### Special Characters
 - © Copyright symbol
@@ -221,49 +172,19 @@ Second line (soft break)
 Third line with double space at end⏎⏎
 Fourth line (hard break)
 
-### Indented Text
-    This is indented text
-    Useful for code snippets or
-    showing hierarchical content
-
 ## 🔤 Typography Examples
 
 ### Different Font Styles
 - **Bold**: Strong emphasis
 - *Italic*: Emphasis or titles
 - `Monospace`: Code or file paths
-- <u>Underline**: Links or highlights
-- ~~Strikethrough**: Deleted content
+- <u>Underline</u>: Links or highlights
+- ~~Strikethrough~~: Deleted content
 
 ### Superscript and Subscript
 - H₂O (water formula)
 - X² (squared)
 - CO₂ (carbon dioxide)
-
-## 📝 Advanced Markdown Tips
-
-### Reference-style Links
-[SelfDesk][1] is an amazing [workspace][2] for [productivity][3].
-
-[1]: https://selfdesk.app "SelfDesk Homepage"
-[2]: https://selfdesk.app/workspace "Workspace Features"  
-[3]: https://selfdesk.app/productivity "Productivity Tools"
-
-### Footnotes
-SelfDesk is designed for productivity¹ and security².
-
-¹ Productivity features include auto-save and quick access
-² Security includes password protection and encrypted storage
-
-### Definition Lists
-Term 1
-: Definition for term 1
-
-Term 2
-: Definition for term 2
-: Additional definition for term 2
-
----
 
 ## 🚀 Getting Started
 
