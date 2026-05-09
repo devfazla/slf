@@ -51,21 +51,17 @@ const Header = ({ onMenuClick }) => {
 
         {/* Right Section - Theme and Actions */}
         <div className="flex items-center space-x-3">
-          {/* Theme Indicator */}
-          <div className="hidden md:flex items-center space-x-2 px-3 py-2 bg-surface2 rounded-lg">
-            <Palette className="h-4 w-4 text-text-secondary" />
-            <span className="text-sm font-medium text-text_primary">
-              {getThemeDisplayName(currentTheme)}
-            </span>
-          </div>
-
+          
           {/* Quick Theme Toggle (Desktop) */}
           <button
             onClick={handleThemeToggle}
-            className="hidden md:flex items-center space-x-2 px-3 py-2 bg-surface2 rounded-lg hover:bg-surface transition-colors"
+            className="hidden md:flex items-center space-x-2 px-4 py-2 bg-surface2 border border-border rounded-lg hover:bg-surface transition-colors"
             title="Switch theme"
           >
             <Palette className="h-4 w-4 text-text-secondary" />
+            <span className="text-sm font-medium text-text-primary">
+              {getThemeDisplayName(currentTheme)}
+            </span>
           </button>
 
           {/* Logout Button */}

@@ -86,10 +86,10 @@ const NotesList = ({
               <div
                 key={note.id}
                 onClick={() => onSelectNote(note.id)}
-                className={`group mx-2 mb-1 px-4 py-3 rounded-lg cursor-pointer transition-all duration-150 ${
+                className={`group mx-2 mb-1 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
                   selectedNoteId === note.id
-                    ? 'bg-primary/10 border-l-4 border-primary'
-                    : 'hover:bg-surface2 border-l-4 border-transparent'
+                    ? 'bg-primary text-white shadow-lg border-2 border-primary/50 -translate-y-0.5'
+                    : 'hover:bg-surface2 border border-border/30'
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -97,19 +97,27 @@ const NotesList = ({
                     {/* Title */}
                     <h3 className={`text-sm font-semibold truncate ${
                       selectedNoteId === note.id
-                        ? 'text-primary'
+                        ? 'text-white'
                         : 'text-text_primary'
                     }`}>
                       {note.title || 'Untitled Note'}
                     </h3>
 
                     {/* Preview */}
-                    <p className="text-xs text-text_tertiary mt-1 line-clamp-2 leading-relaxed">
+                    <p className={`text-xs mt-1 line-clamp-2 leading-relaxed ${
+                      selectedNoteId === note.id
+                        ? 'text-white/80'
+                        : 'text-text_tertiary'
+                    }`}>
                       {getPreview(note.content)}
                     </p>
 
                     {/* Date */}
-                    <p className="text-[10px] text-text_tertiary mt-1.5 uppercase tracking-wider font-medium">
+                    <p className={`text-[10px] mt-1.5 uppercase tracking-wider font-medium ${
+                      selectedNoteId === note.id
+                        ? 'text-white/60'
+                        : 'text-text_tertiary'
+                    }`}>
                       {formatDate(note.updated_at || note.created_at)}
                     </p>
                   </div>

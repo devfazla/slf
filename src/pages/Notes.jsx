@@ -4,6 +4,7 @@ import NotesList from '../components/NotesList';
 import NotesEditor from '../components/NotesEditor';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import { useNotes } from '../hooks/useNotes';
+import { useGlobalSave } from '../context/GlobalSaveContext';
 import { FileText, ArrowLeft } from 'lucide-react';
 
 const Notes = () => {
@@ -14,6 +15,8 @@ const Notes = () => {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, noteId: null, noteTitle: '' });
   const [mobileShowEditor, setMobileShowEditor] = useState(false);
+  const [currentTitle, setCurrentTitle] = useState('');
+  const [currentContent, setCurrentContent] = useState('');
 
   const {
     getNotes,
@@ -23,6 +26,8 @@ const Notes = () => {
     searchNotes,
     isLoading
   } = useNotes();
+
+  const { registerSaveFunction, unregisterSaveFunction } = useGlobalSave();
 
   // Load notes on mount
   useEffect(() => {
@@ -97,6 +102,24 @@ const Notes = () => {
       setTimeout(() => setSaveStatus(null), 3000);
     }
   }, [updateNote]);
+
+  // Register global save function when note is selected
+  useEffect(() => {
+    if (selectedNote) {
+      const saveFunction = () => {
+        if (currentTitle !== (selectedNote?.title || '') || currentContent !== (selectedNote?.content || '')) {
+          handleSave(selectedNote.id, { title: currentTitle, content: currentContent });
+        }
+      };
+      registerSaveFunction(saveFunction);
+      
+      return () => {
+        unregisterSaveFunction();
+      };
+    } else {
+      unregisterSaveFunction();
+    }
+  }, [selectedNote?.id, currentTitle, currentContent, handleSave]);
 
   const handleDeleteRequest = (noteId, noteTitle) => {
     setDeleteModal({ isOpen: true, noteId, noteTitle: noteTitle || 'Untitled Note' });
@@ -179,6 +202,8 @@ const Notes = () => {
               note={selectedNote}
               onSave={handleSave}
               saveStatus={saveStatus}
+              onTitleChange={setCurrentTitle}
+              onContentChange={setCurrentContent}
             />
           </div>
         </div>

@@ -10,24 +10,44 @@ import MarkdownPreview from './MarkdownPreview';
 
 const AUTO_SAVE_DELAY = 3000; // 3 seconds
 
-const NotesEditor = ({ note, onSave, saveStatus }) => {
+const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [viewMode, setViewMode] = useState('split'); // 'edit' | 'split' | 'preview'
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const saveTimeoutRef = useRef(null);
   const isInitialLoad = useRef(true);
+  const lastSavedTitle = useRef('');
+  const lastSavedContent = useRef('');
 
   // Sync local state when the selected note changes
   useEffect(() => {
     if (note) {
-      setTitle(note.title || '');
-      setContent(note.content || '');
+      const newTitle = note.title || '';
+      const newContent = note.content || '';
+      setTitle(newTitle);
+      setContent(newContent);
+      lastSavedTitle.current = newTitle;
+      lastSavedContent.current = newContent;
+      setHasUnsavedChanges(false);
       isInitialLoad.current = true;
     }
   }, [note?.id]);
 
   // Auto-save with debounce
   const triggerAutoSave = useCallback((newTitle, newContent) => {
+    // Check if content actually changed compared to last saved values
+    const titleChanged = newTitle !== lastSavedTitle.current;
+    const contentChanged = newContent !== lastSavedContent.current;
+    
+    if (titleChanged || contentChanged) {
+      setHasUnsavedChanges(true);
+    } else {
+      setHasUnsavedChanges(false);
+      return;
+    }
+
+    // Skip auto-save during initial load, but still track changes
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
       return;
@@ -40,10 +60,19 @@ const NotesEditor = ({ note, onSave, saveStatus }) => {
 
     saveTimeoutRef.current = setTimeout(() => {
       if (note) {
+        lastSavedTitle.current = newTitle;
+        lastSavedContent.current = newContent;
         onSave(note.id, { title: newTitle, content: newContent });
       }
     }, AUTO_SAVE_DELAY);
   }, [note, onSave]);
+
+  // Reset unsaved changes when save completes
+  useEffect(() => {
+    if (saveStatus === 'saved') {
+      setHasUnsavedChanges(false);
+    }
+  }, [saveStatus]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -57,12 +86,14 @@ const NotesEditor = ({ note, onSave, saveStatus }) => {
   const handleTitleChange = (e) => {
     const newTitle = e.target.value;
     setTitle(newTitle);
+    onTitleChange?.(newTitle);
     triggerAutoSave(newTitle, content);
   };
 
   const handleContentChange = (e) => {
     const newContent = e.target.value;
     setContent(newContent);
+    onContentChange?.(newContent);
     triggerAutoSave(title, newContent);
   };
 
@@ -83,17 +114,12 @@ const NotesEditor = ({ note, onSave, saveStatus }) => {
       const end = e.target.selectionEnd;
       const newContent = content.substring(0, start) + '  ' + content.substring(end);
       setContent(newContent);
+      onContentChange?.(newContent);
       triggerAutoSave(title, newContent);
       // Restore cursor position after React re-renders
       requestAnimationFrame(() => {
         e.target.selectionStart = e.target.selectionEnd = start + 2;
       });
-    }
-
-    // Ctrl+S to save
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-      e.preventDefault();
-      handleManualSave();
     }
   };
 
@@ -133,12 +159,17 @@ const NotesEditor = ({ note, onSave, saveStatus }) => {
           </div>
         );
       default:
-        return (
-          <div className="flex items-center space-x-1.5 text-text_tertiary">
-            <div className="h-1.5 w-1.5 rounded-full bg-warning" />
-            <span className="text-xs font-medium">Unsaved</span>
-          </div>
-        );
+        // Only show "Unsaved" if there are actual unsaved changes
+        if (hasUnsavedChanges) {
+          return (
+            <div className="flex items-center space-x-1.5 text-text_tertiary">
+              <div className="h-1.5 w-1.5 rounded-full bg-warning" />
+              <span className="text-xs font-medium">Unsaved</span>
+            </div>
+          );
+        }
+        // Don't show anything if no changes
+        return null;
     }
   };
 

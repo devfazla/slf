@@ -1,8 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
 import { useAuth } from './hooks/useAuth'
+import { useGlobalShortcut } from './hooks/useGlobalShortcut'
+import { useGlobalSave } from './context/GlobalSaveContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import ThemeProvider from './components/ThemeProvider'
+import { GlobalSaveProvider } from './context/GlobalSaveContext'
 import Login from './pages/Login'
 import Chat from './pages/Chat'
 import Notes from './pages/Notes'
@@ -15,7 +18,9 @@ function App() {
     <Router>
       <AuthProvider>
         <ThemeProvider>
-          <AppContent />
+          <GlobalSaveProvider>
+            <AppContent />
+          </GlobalSaveProvider>
         </ThemeProvider>
       </AuthProvider>
     </Router>
@@ -24,6 +29,11 @@ function App() {
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth()
+  const { executeSave } = useGlobalSave()
+
+  // Global Ctrl+S shortcut to save current note
+  useGlobalShortcut('ctrl+s', executeSave, isAuthenticated)
+  useGlobalShortcut('meta+s', executeSave, isAuthenticated)
 
   if (isLoading) {
     return (
