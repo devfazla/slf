@@ -203,6 +203,45 @@ export const useNotes = () => {
     }
   }, [clearError]);
 
+  /**
+   * Toggle favorite status of a note
+   */
+  const toggleFavorite = useCallback(async (noteId) => {
+    try {
+      clearError();
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('User not authenticated');
+
+      // First get the current note to check its favorite status
+      const { data: currentNote, error: fetchError } = await supabase
+        .from('notes')
+        .select('is_favorite')
+        .eq('id', noteId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (fetchError) throw new Error(`Failed to fetch note: ${fetchError.message}`);
+
+      // Toggle the favorite status
+      const { data, error: updateError } = await supabase
+        .from('notes')
+        .update({ is_favorite: !currentNote.is_favorite })
+        .eq('id', noteId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (updateError) throw new Error(`Failed to update favorite: ${updateError.message}`);
+
+      return data;
+    } catch (err) {
+      setError(err.message);
+      console.error('toggleFavorite error:', err);
+      throw err;
+    }
+  }, [clearError]);
+
   return {
     getNotes,
     getNote,
@@ -210,6 +249,7 @@ export const useNotes = () => {
     updateNote,
     deleteNote,
     searchNotes,
+    toggleFavorite,
     isLoading,
     error,
     clearError

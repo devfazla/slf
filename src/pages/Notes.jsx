@@ -24,6 +24,7 @@ const Notes = () => {
     updateNote,
     deleteNote,
     searchNotes,
+    toggleFavorite,
     isLoading
   } = useNotes();
 
@@ -141,6 +142,17 @@ const Notes = () => {
     }
   }, [selectedNote?.id, currentTitle, currentContent, handleSave]);
 
+  const handleToggleFavorite = async (noteId) => {
+    try {
+      const updatedNote = await toggleFavorite(noteId);
+      if (updatedNote) {
+        setNotes(prev => prev.map(n => n.id === noteId ? { ...n, ...updatedNote } : n));
+      }
+    } catch (err) {
+      console.error('Failed to toggle favorite:', err);
+    }
+  };
+
   const handleDeleteRequest = (noteId, noteTitle) => {
     setDeleteModal({ isOpen: true, noteId, noteTitle: noteTitle || 'Untitled Note' });
   };
@@ -199,6 +211,7 @@ const Notes = () => {
               onSelectNote={handleSelectNote}
               onCreateNote={handleCreateNote}
               onDeleteNote={handleDeleteRequest}
+              onToggleFavorite={handleToggleFavorite}
               searchQuery={searchQuery}
               onSearchChange={handleSearchChange}
               isLoading={isInitialLoading}

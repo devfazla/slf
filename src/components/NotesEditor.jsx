@@ -24,6 +24,19 @@ const NotesEditor = ({ note, onSave, saveStatus, onTitleChange, onContentChange,
   const lastSavedTitle = useRef('');
   const lastSavedContent = useRef('');
 
+  // Prevent split view on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      if (window.innerWidth < 1024 && viewMode === 'split') {
+        setViewMode('edit');
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, [viewMode]);
+
   // Sync local state when the selected note changes
   useEffect(() => {
     if (note) {

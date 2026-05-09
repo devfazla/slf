@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Plus, Trash2, FileText } from 'lucide-react';
+import { Search, Plus, Trash2, FileText, Star } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 /**
@@ -11,6 +11,7 @@ const NotesList = ({
   onSelectNote,
   onCreateNote,
   onDeleteNote,
+  onToggleFavorite,
   searchQuery,
   onSearchChange,
   isLoading
@@ -105,21 +106,44 @@ const NotesList = ({
                       </h3>
                     </div>
 
-                    {/* Delete button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteNote(note.id, note.title);
-                      }}
-                      className={`p-1.5 rounded-lg transition-all flex-shrink-0 ${
-                        selectedNoteId === note.id
-                          ? 'text-white/60 hover:text-white hover:bg-white/10'
-                          : 'opacity-0 group-hover:opacity-100 text-text_tertiary hover:text-danger hover:bg-danger/10'
-                      }`}
-                      title="Delete note"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    {/* Action buttons */}
+                    <div className="flex items-center space-x-1 flex-shrink-0">
+                      {/* Favorite button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleFavorite(note.id);
+                        }}
+                        className={`p-1.5 rounded-lg transition-all ${
+                          selectedNoteId === note.id
+                            ? note.is_favorite
+                              ? 'text-yellow-300 hover:text-yellow-200 hover:bg-white/10'
+                              : 'text-white/60 hover:text-yellow-300 hover:bg-white/10'
+                            : note.is_favorite
+                              ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50'
+                              : 'opacity-0 group-hover:opacity-100 text-text_tertiary hover:text-yellow-500 hover:bg-yellow-50/50'
+                        }`}
+                        title={note.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+                      >
+                        <Star className={`h-3.5 w-3.5 ${note.is_favorite ? 'fill-current' : ''}`} />
+                      </button>
+
+                      {/* Delete button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteNote(note.id, note.title);
+                        }}
+                        className={`p-1.5 rounded-lg transition-all ${
+                          selectedNoteId === note.id
+                            ? 'text-white/60 hover:text-white hover:bg-white/10'
+                            : 'opacity-0 group-hover:opacity-100 text-text_tertiary hover:text-danger hover:bg-danger/10'
+                        }`}
+                        title="Delete note"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Preview */}
