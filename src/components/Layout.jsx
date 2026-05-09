@@ -10,7 +10,7 @@ import Sidebar from './Sidebar';
  * └── Main Content Area
  * Responsive (sidebar collapses on mobile)
  */
-const Layout = ({ children }) => {
+const Layout = ({ children, fullHeight = false }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const toggleSidebar = () => {
@@ -22,13 +22,13 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className={`${fullHeight ? 'h-screen' : 'min-h-screen'} bg-background flex flex-col`}>
       {/* Header */}
       <Header onMenuClick={toggleSidebar} />
 
       {/* Main Content Area */}
-      <div className="flex flex-1 relative">
-        {/* Sidebar Overlay for mobile */}
+      <div className="flex flex-1 relative min-h-0">
+        {/* Sidebar overlay for mobile */}
         {sidebarOpen && (
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
@@ -41,10 +41,14 @@ const Layout = ({ children }) => {
         <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
         {/* Main Content */}
-        <main className="flex-1 lg:ml-64 overflow-y-auto">
-          <div className="p-4 lg:p-6">
-            {children}
-          </div>
+        <main className={`flex-1 lg:ml-64 ${fullHeight ? 'flex flex-col min-h-0' : 'overflow-y-auto'}`}>
+          {fullHeight ? (
+            children
+          ) : (
+            <div className="p-4 lg:p-6">
+              {children}
+            </div>
+          )}
         </main>
       </div>
     </div>
