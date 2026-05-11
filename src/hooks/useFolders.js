@@ -152,11 +152,98 @@ export const useFolders = () => {
     }
   }, [clearError]);
 
+  const getAllFolders = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      clearError();
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('User not authenticated');
+
+      const { data, error: fetchError } = await supabase
+        .from('folders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name', { ascending: true });
+
+      if (fetchError) throw new Error(`Failed to fetch all folders: ${fetchError.message}`);
+
+      return data || [];
+    } catch (err) {
+      setError(err.message);
+      console.error('getAllFolders error:', err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [clearError]);
+
+  const moveFolder = useCallback(async (folderId, newParentId) => {
+    try {
+      setIsLoading(true);
+      clearError();
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('User not authenticated');
+
+      const { data, error: updateError } = await supabase
+        .from('folders')
+        .update({ parent_id: newParentId })
+        .eq('id', folderId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (updateError) throw new Error(`Failed to move folder: ${updateError.message}`);
+
+      return data;
+    } catch (err) {
+      setError(err.message);
+      console.error('moveFolder error:', err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [clearError]);
+
+  const copyFolder = useCallback(async (folderId, targetParentId) => {
+    try {
+      setIsLoading(true);
+      clearError();
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('User not authenticated');
+
+      // 1. Get source folder
+      const sourceFolder = await getFolder(folderId);
+      if (!sourceFolder) throw new Error('Source folder not found');
+
+      // 2. Create new folder
+      const newFolderName = `${sourceFolder.name} - Copy`;
+      const newFolder = await createFolder(targetParentId, newFolderName);
+
+      // Note: Recursive copy of contents would go here
+      // For now, we just copy the folder itself to keep it simple
+      // Full recursive copy would require fetching all children and copying them too.
+
+      return newFolder;
+    } catch (err) {
+      setError(err.message);
+      console.error('copyFolder error:', err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [clearError, getFolder, createFolder]);
+
   return {
     getFolderContents,
+    getAllFolders,
     createFolder,
     renameFolder,
     deleteFolder,
+    moveFolder,
+    copyFolder,
     getFolder,
     isLoading,
     error,

@@ -33,73 +33,41 @@ const getFileIcon = (fileType, mimeType) => {
   }
 };
 
-const FileItem = ({ file, onDownload, onRename, onDelete }) => {
-  const [showMenu, setShowMenu] = useState(false);
-
-  const handleDownload = (e) => {
+const FileItem = ({ 
+  file, 
+  onDownload, 
+  isSelected, 
+  onSelect, 
+  onContextMenu 
+}) => {
+  const handleContextMenu = (e) => {
+    e.preventDefault();
     e.stopPropagation();
-    setShowMenu(false);
-    onDownload(file);
+    onContextMenu(e, file, 'file');
   };
 
-  const handleRename = (e) => {
+  const handleClick = (e) => {
     e.stopPropagation();
-    setShowMenu(false);
-    onRename(file);
-  };
-
-  const handleDelete = (e) => {
-    e.stopPropagation();
-    setShowMenu(false);
-    onDelete(file);
+    onSelect(file.id, 'file', e.ctrlKey || e.metaKey);
   };
 
   return (
-    <div className="relative flex flex-col items-center p-4 bg-surface rounded-xl border border-border hover:border-primary/50 hover:shadow-md transition-all group">
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button 
-          className="p-1 hover:bg-background rounded-md text-text_secondary hover:text-text_primary transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowMenu(!showMenu);
-          }}
-        >
-          <MoreVertical className="h-4 w-4" />
-        </button>
-
-        {showMenu && (
-          <div className="absolute right-0 top-full mt-1 w-36 bg-surface border border-border rounded-lg shadow-xl py-1 z-10">
-            <button 
-              className="w-full flex items-center px-3 py-1.5 text-sm hover:bg-background transition-colors"
-              onClick={handleDownload}
-            >
-              <Download className="h-3.5 w-3.5 mr-2 text-text_secondary" />
-              Download
-            </button>
-            <button 
-              className="w-full flex items-center px-3 py-1.5 text-sm hover:bg-background transition-colors"
-              onClick={handleRename}
-            >
-              <Edit2 className="h-3.5 w-3.5 mr-2 text-text_secondary" />
-              Rename
-            </button>
-            <button 
-              className="w-full flex items-center px-3 py-1.5 text-sm hover:bg-background text-danger transition-colors"
-              onClick={handleDelete}
-            >
-              <Trash2 className="h-3.5 w-3.5 mr-2" />
-              Delete
-            </button>
-          </div>
-        )}
-      </div>
-
+    <div 
+      className={`relative flex flex-col items-center p-4 rounded-xl border transition-all group select-none h-40 ${
+        isSelected 
+          ? 'bg-primary/10 border-primary shadow-sm' 
+          : 'bg-surface border-border hover:border-primary/50 hover:shadow-md'
+      }`}
+      onClick={handleClick}
+      onDoubleClick={handleContextMenu}
+      onContextMenu={handleContextMenu}
+    >
       <div className="flex-1 flex flex-col items-center justify-center w-full">
         {getFileIcon(file.file_type, file.mime_type)}
       </div>
       
       <div className="text-center w-full mt-auto">
-        <p className="text-sm font-medium text-text_primary truncate w-full px-1" title={file.name}>
+        <p className={`text-sm font-medium truncate w-full px-1 ${isSelected ? 'text-primary' : 'text-text_primary'}`} title={file.name}>
           {file.name}
         </p>
         <div className="flex justify-between items-center px-1 mt-1">

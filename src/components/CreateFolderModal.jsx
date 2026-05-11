@@ -1,13 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, FolderPlus } from 'lucide-react';
 
-const CreateFolderModal = ({ isOpen, onClose, onCreate, initialName = '' }) => {
-  const [folderName, setFolderName] = useState(initialName);
+const CreateFolderModal = ({ 
+  isOpen, 
+  onClose, 
+  onCreate, 
+  initialName = '', 
+  title, 
+  placeholder,
+  icon: Icon = FolderPlus 
+}) => {
+  const [name, setName] = useState(initialName);
   const inputRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
-      setFolderName(initialName);
+      setName(initialName);
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
@@ -21,22 +29,25 @@ const CreateFolderModal = ({ isOpen, onClose, onCreate, initialName = '' }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (folderName.trim()) {
-      onCreate(folderName.trim());
-      setFolderName('');
+    if (name.trim()) {
+      onCreate(name.trim());
+      setName('');
     }
   };
 
+  const displayTitle = title || (initialName ? 'Rename' : 'Create New Folder');
+  const displayPlaceholder = placeholder || 'e.g. Documents';
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div 
         className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h3 className="text-lg font-semibold flex items-center">
-            <FolderPlus className="h-5 w-5 mr-2 text-primary" />
-            {initialName ? 'Rename Folder' : 'Create New Folder'}
+            <Icon className="h-5 w-5 mr-2 text-primary" />
+            {displayTitle}
           </h3>
           <button 
             onClick={onClose}
@@ -48,17 +59,17 @@ const CreateFolderModal = ({ isOpen, onClose, onCreate, initialName = '' }) => {
         
         <form onSubmit={handleSubmit} className="p-4">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-text_secondary mb-1" htmlFor="folderName">
-              Folder Name
+            <label className="block text-sm font-medium text-text_secondary mb-1" htmlFor="itemName">
+              Name
             </label>
             <input
               ref={inputRef}
-              id="folderName"
+              id="itemName"
               type="text"
-              value={folderName}
-              onChange={(e) => setFolderName(e.target.value)}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-text_primary"
-              placeholder="e.g. Documents"
+              placeholder={displayPlaceholder}
               required
             />
           </div>
@@ -73,7 +84,7 @@ const CreateFolderModal = ({ isOpen, onClose, onCreate, initialName = '' }) => {
             </button>
             <button
               type="submit"
-              disabled={!folderName.trim()}
+              disabled={!name.trim()}
               className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {initialName ? 'Save' : 'Create'}

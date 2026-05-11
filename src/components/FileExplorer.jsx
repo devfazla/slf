@@ -1,32 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useExplorer } from '../hooks/useExplorer';
 import { useFolders } from '../hooks/useFolders';
 import { useFiles } from '../hooks/useFiles';
 import FolderNav from './FolderNav';
 import FolderView from './FolderView';
 import CreateFolderModal from './CreateFolderModal';
-import FileUploadArea from './FileUploadArea';
-import { FolderPlus, RefreshCw } from 'lucide-react';
+import ActionToolbar from './ActionToolbar';
+import FolderTree from './FolderTree';
+import ContextMenu from './ContextMenu';
+import FullScreenUpload from './FullScreenUpload';
+import DetailsModal from './DetailsModal';
 
 const FileExplorer = () => {
   const {
     currentFolderId,
     currentPath,
     items,
+    allFolders,
     isLoading: isLoadingExplorer,
     refreshContents,
     navigateToFolder,
-    navigateToPathIndex
+    navigateToPathIndex,
+    selectedItems,
+    toggleSelection,
+    clearSelection
   } = useExplorer();
 
-  const { createFolder, renameFolder, deleteFolder } = useFolders();
-  const { uploadFile, downloadFile, renameFile, deleteFile } = useFiles();
+  const { createFolder, renameFolder, deleteFolder, moveFolder, copyFolder } = useFolders();
+  const { uploadFile, downloadFile, renameFile, deleteFile, moveFile, copyFile } = useFiles();
 
+  // Modals/Dialogs State
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [isNewFileModalOpen, setIsNewFileModalOpen] = useState(false);
   const [folderToRename, setFolderToRename] = useState(null);
   const [fileToRename, setFileToRename] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [detailsItem, setDetailsItem] = useState(null);
 
+  // Clipboard & Context Menu State
+  const [clipboard, setClipboard] = useState({ items: [], action: null }); // action: 'copy' | 'move'
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, type, item }
+
+  // Handlers for Folder Operations
   const handleCreateFolder = async (name) => {
     try {
       await createFolder(currentFolderId, name);
@@ -34,142 +49,318 @@ const FileExplorer = () => {
       setIsFolderModalOpen(false);
     } catch (err) {
       console.error('Create folder error:', err);
-      // Optional: Add a toast notification here
     }
   };
 
-  const handleRenameFolderSubmit = async (newName) => {
+  const handleCreateFile = async (name) => {
+    try {
+      // Create a small placeholder text file
+      const blob = new Blob(['Empty file'], { type: 'text/plain' });
+      const file = new File([blob], name.endsWith('.txt') ? name : `${name}.txt`, { type: 'text/plain' });
+      await uploadFile(file, currentFolderId);
+      refreshContents();
+      setIsNewFileModalOpen(false);
+    } catch (err) {
+      console.error('Create file error:', err);
+    }
+  };
+
+  const handleRenameSubmit = async (newName) => {
     try {
       if (folderToRename) {
         await renameFolder(folderToRename.id, newName);
-        refreshContents();
-        setFolderToRename(null);
       } else if (fileToRename) {
         await renameFile(fileToRename.id, newName);
-        refreshContents();
-        setFileToRename(null);
       }
+      refreshContents();
+      setFolderToRename(null);
+      setFileToRename(null);
     } catch (err) {
       console.error('Rename error:', err);
     }
   };
 
-  const handleDeleteFolder = async (folder) => {
-    if (window.confirm(`Are you sure you want to delete the folder "${folder.name}"? This action cannot be undone.`)) {
+  const handleDeleteItem = async (item, itemType) => {
+    const confirmMsg = `Are you sure you want to delete the ${itemType} "${item.name}"? This action cannot be undone.`;
+    if (window.confirm(confirmMsg)) {
       try {
-        await deleteFolder(folder.id);
+        if (itemType === 'folder') {
+          await deleteFolder(item.id);
+        } else {
+          await deleteFile(item.id);
+        }
         refreshContents();
       } catch (err) {
-        console.error('Delete folder error:', err);
+        console.error('Delete error:', err);
       }
     }
   };
 
-  const handleUploadFile = async (file) => {
+  // Clipboard Actions
+  const handleCopy = () => {
+    if (selectedItems.length > 0) {
+      const itemsToCopy = items.filter(item => 
+        selectedItems.some(si => si.id === item.id && si.itemType === item.itemType)
+      );
+      setClipboard({ items: itemsToCopy, action: 'copy' });
+    }
+  };
+
+  const handleMove = () => {
+    if (selectedItems.length > 0) {
+      const itemsToMove = items.filter(item => 
+        selectedItems.some(si => si.id === item.id && si.itemType === item.itemType)
+      );
+      setClipboard({ items: itemsToMove, action: 'move' });
+    }
+  };
+
+  const handlePaste = async () => {
+    if (!clipboard.action || clipboard.items.length === 0) return;
+
     try {
-      setIsUploading(true);
-      await uploadFile(file, currentFolderId);
+      for (const item of clipboard.items) {
+        if (clipboard.action === 'move') {
+          if (item.itemType === 'folder') {
+            await moveFolder(item.id, currentFolderId);
+          } else {
+            await moveFile(item.id, currentFolderId);
+          }
+        } else if (clipboard.action === 'copy') {
+          if (item.itemType === 'folder') {
+            await copyFolder(item.id, currentFolderId);
+          } else {
+            await copyFile(item, currentFolderId);
+          }
+        }
+      }
       refreshContents();
+      if (clipboard.action === 'move') {
+        setClipboard({ items: [], action: null });
+      }
     } catch (err) {
-      console.error('Upload file error:', err);
-    } finally {
-      setIsUploading(false);
+      console.error('Paste error:', err);
+      alert('Some items could not be pasted.');
     }
   };
 
-  const handleDownloadFile = async (file) => {
-    try {
-      await downloadFile(file.telegram_file_id, file.name);
-    } catch (err) {
-      console.error('Download error:', err);
-    }
-  };
+  // Other Actions
+  const handleDownload = async () => {
+    const filesToDownload = items.filter(item => 
+      item.itemType === 'file' && 
+      selectedItems.some(si => si.id === item.id && si.itemType === 'file')
+    );
 
-  const handleDeleteFile = async (file) => {
-    if (window.confirm(`Are you sure you want to delete the file "${file.name}"? This action cannot be undone.`)) {
+    for (const file of filesToDownload) {
       try {
-        await deleteFile(file.id);
-        refreshContents();
+        await downloadFile(file.telegram_file_id, file.name);
       } catch (err) {
-        console.error('Delete file error:', err);
+        console.error('Download error:', err);
       }
     }
   };
 
-  const isModalOpen = isFolderModalOpen || !!folderToRename || !!fileToRename;
-  const modalInitialName = folderToRename?.name || fileToRename?.name || '';
-
-  const handleModalClose = () => {
-    setIsFolderModalOpen(false);
-    setFolderToRename(null);
-    setFileToRename(null);
+  const handleContextMenuAction = (action, item) => {
+    switch (action) {
+      case 'copy':
+        // If item is provided, select only it first? 
+        // For simplicity, we copy current selection if item is in it, or just item if not.
+        if (item) {
+          const isItemSelected = selectedItems.some(si => si.id === item.id);
+          if (!isItemSelected) toggleSelection(item.id, item.itemType, false);
+        }
+        handleCopy();
+        break;
+      case 'move':
+        if (item) {
+          const isItemSelected = selectedItems.some(si => si.id === item.id);
+          if (!isItemSelected) toggleSelection(item.id, item.itemType, false);
+        }
+        handleMove();
+        break;
+      case 'rename':
+        if (item.itemType === 'folder') setFolderToRename(item);
+        else setFileToRename(item);
+        break;
+      case 'delete':
+        handleDeleteItem(item, item.itemType);
+        break;
+      case 'details':
+        setDetailsItem({ ...item, type: item.itemType });
+        break;
+      case 'download':
+        downloadFile(item.telegram_file_id, item.name);
+        break;
+      case 'paste':
+        handlePaste();
+        break;
+      case 'upload':
+        setIsUploadDialogOpen(true);
+        break;
+      case 'refresh':
+        refreshContents();
+        break;
+      case 'newFolder':
+        setIsFolderModalOpen(true);
+        break;
+      case 'newFile':
+        setIsNewFileModalOpen(true);
+        break;
+      case 'dirDetails':
+        setDetailsItem({ 
+          name: currentPath[currentPath.length - 1].name, 
+          created_at: new Date().toISOString(), // Mocking current dir date
+          type: 'folder'
+        });
+        break;
+      default:
+        break;
+    }
   };
 
-  const handleModalSubmit = (name) => {
-    if (folderToRename || fileToRename) {
-      handleRenameFolderSubmit(name);
-    } else {
-      handleCreateFolder(name);
+  const onGlobalContextMenu = (e) => {
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      type: 'empty',
+      item: null
+    });
+  };
+
+  const onItemContextMenu = (e, item, type) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Select the item if it's not already selected (only if item exists)
+    if (item) {
+      const isSelected = selectedItems.some(si => si.id === item.id && si.itemType === type);
+      if (!isSelected) {
+        toggleSelection(item.id, type, false);
+      }
+    }
+
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      type: type,
+      item: item
+    });
+  };
+
+  const handleToolbarRename = () => {
+    if (selectedItems.length === 1) {
+      const si = selectedItems[0];
+      const item = items.find(i => i.id === si.id && i.itemType === si.itemType);
+      if (item) {
+        if (si.itemType === 'folder') setFolderToRename(item);
+        else setFileToRename(item);
+      }
     }
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Header Area */}
-      <div className="flex justify-between items-center mb-6">
-        <FolderNav 
-          currentPath={currentPath} 
-          navigateToPathIndex={navigateToPathIndex} 
-        />
-        
-        <div className="flex gap-3">
-          <button
-            onClick={() => refreshContents()}
-            className="p-2 bg-surface hover:bg-background border border-border rounded-lg text-text_secondary hover:text-text_primary transition-colors"
-            title="Refresh"
-            disabled={isLoadingExplorer}
-          >
-            <RefreshCw className={`h-5 w-5 ${isLoadingExplorer ? 'animate-spin' : ''}`} />
-          </button>
-          
-          <button
-            onClick={() => setIsFolderModalOpen(true)}
-            className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            <FolderPlus className="h-4 w-4 mr-2" />
-            New Folder
-          </button>
+    <div 
+      className="flex flex-col h-full overflow-hidden relative"
+      onClick={() => setContextMenu(null)}
+      onContextMenu={onGlobalContextMenu}
+    >
+      <ActionToolbar 
+        onRefresh={refreshContents}
+        onNewFolder={() => setIsFolderModalOpen(true)}
+        onNewFile={() => setIsNewFileModalOpen(true)}
+        onUpload={() => setIsUploadDialogOpen(true)}
+        onCopy={handleCopy}
+        onMove={handleMove}
+        onPaste={handlePaste}
+        onRename={handleToolbarRename}
+        onDownload={handleDownload}
+        selectedItems={selectedItems}
+        clipboardAction={clipboard.action}
+        isLoading={isLoadingExplorer}
+      />
+
+      <div className="flex flex-1 overflow-hidden mt-5">
+        <div className="w-52 border-r border-border overflow-y-auto overflow-x-auto hidden md:block shrink-0 custom-scrollbar relative">
+
+
+          <FolderTree 
+            allFolders={allFolders}
+            currentFolderId={currentFolderId}
+            onNavigate={navigateToFolder}
+            selectedItems={selectedItems}
+            onContextMenu={onItemContextMenu}
+          />
+        </div>
+
+        <div className="flex-1 flex flex-col min-w-0 md:pl-6 overflow-hidden">
+          <div className="mb-5">
+            <FolderNav 
+              currentPath={currentPath} 
+              navigateToPathIndex={navigateToPathIndex} 
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto pb-6">
+            <FolderView 
+              items={items}
+              isLoading={isLoadingExplorer}
+              onNavigate={navigateToFolder}
+              selectedItems={selectedItems}
+              onSelect={toggleSelection}
+              onContextMenu={onItemContextMenu}
+              onDownloadFile={downloadFile}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Upload Area */}
-      <div className="mb-6 shrink-0">
-        <FileUploadArea 
-          onUpload={handleUploadFile} 
-          disabled={isUploading}
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu 
+          {...contextMenu} 
+          onClose={() => setContextMenu(null)} 
+          onAction={handleContextMenuAction}
+          clipboardAction={clipboard.action}
         />
-      </div>
+      )}
 
-      {/* Main View */}
-      <div className="flex-1 overflow-y-auto pb-6">
-        <FolderView 
-          items={items}
-          isLoading={isLoadingExplorer}
-          onNavigate={navigateToFolder}
-          onRenameFolder={(folder) => setFolderToRename(folder)}
-          onDeleteFolder={handleDeleteFolder}
-          onDownloadFile={handleDownloadFile}
-          onRenameFile={(file) => setFileToRename(file)}
-          onDeleteFile={handleDeleteFile}
-        />
-      </div>
-
-      {/* Shared Modal for Create/Rename */}
+      {/* Modals */}
       <CreateFolderModal 
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        onCreate={handleModalSubmit}
-        initialName={modalInitialName}
+        isOpen={isFolderModalOpen || !!folderToRename || !!fileToRename}
+        onClose={() => {
+          setIsFolderModalOpen(false);
+          setFolderToRename(null);
+          setFileToRename(null);
+        }}
+        onCreate={(name) => {
+          if (folderToRename || fileToRename) handleRenameSubmit(name);
+          else handleCreateFolder(name);
+        }}
+        initialName={folderToRename?.name || fileToRename?.name || ''}
+      />
+
+      <CreateFolderModal 
+        isOpen={isNewFileModalOpen}
+        onClose={() => setIsNewFileModalOpen(false)}
+        onCreate={handleCreateFile}
+        title="Create New File"
+        placeholder="Enter file name (e.g. note.txt)"
+      />
+
+      <FullScreenUpload 
+        isOpen={isUploadDialogOpen}
+        onClose={() => setIsUploadDialogOpen(false)}
+        onUpload={(file) => {
+          uploadFile(file, currentFolderId).then(() => refreshContents());
+        }}
+      />
+
+      <DetailsModal 
+        isOpen={!!detailsItem}
+        onClose={() => setDetailsItem(null)}
+        item={detailsItem}
+        type={detailsItem?.type}
       />
     </div>
   );

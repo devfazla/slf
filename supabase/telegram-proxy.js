@@ -126,7 +126,7 @@ serve(async (req: any) => {
 
             case "downloadFile":
                 // fileId here is actually the file_path for download
-                telegramUrl = `${TELEGRAM_API_BASE}${botToken}/file/${fileId}`;
+                telegramUrl = `https://api.telegram.org/file/bot${botToken}/${fileId}`;
                 fetchOptions = {
                     method: "GET",
                 };

@@ -6,10 +6,13 @@ export const useExplorer = () => {
   const [currentFolderId, setCurrentFolderId] = useState(null);
   const [currentPath, setCurrentPath] = useState([{ id: null, name: 'Home' }]);
   const [items, setItems] = useState([]);
+  const [allFolders, setAllFolders] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]); // [{ id, itemType }]
 
   const { 
     getFolderContents, 
+    getAllFolders,
     getFolder, 
     isLoading: isLoadingFolders,
     error: foldersError
@@ -28,21 +31,23 @@ export const useExplorer = () => {
     try {
       setIsRefreshing(true);
       
-      const [folders, files] = await Promise.all([
+      const [folders, files, allFoldersData] = await Promise.all([
         getFolderContents(currentFolderId),
-        getFilesInFolder(currentFolderId)
+        getFilesInFolder(currentFolderId),
+        getAllFolders()
       ]);
 
       const formattedFolders = folders.map(f => ({ ...f, itemType: 'folder' }));
       const formattedFiles = files.map(f => ({ ...f, itemType: 'file' }));
 
       setItems([...formattedFolders, ...formattedFiles]);
+      setAllFolders(allFoldersData);
     } catch (err) {
       console.error('Failed to refresh explorer contents:', err);
     } finally {
       setIsRefreshing(false);
     }
-  }, [currentFolderId, getFolderContents, getFilesInFolder]);
+  }, [currentFolderId, getFolderContents, getFilesInFolder, getAllFolders]);
 
   // Initial load and folder change load
   useEffect(() => {
@@ -51,35 +56,41 @@ export const useExplorer = () => {
 
   const navigateToFolder = useCallback(async (folderId, folderName) => {
     setCurrentFolderId(folderId);
+    setSelectedItems([]); // Clear selection on navigation
     
-    // Add to path if we have the name, otherwise we might need to fetch it (or reconstruct full path)
-    if (folderName) {
-      setCurrentPath(prev => {
-        // Check if we are going to a sibling/cousin (rare in normal nav) or child
-        // For simplicity, assuming we only navigate deeper via UI clicks
-        const exists = prev.findIndex(p => p.id === folderId);
-        if (exists >= 0) {
-          // Navigating backwards via breadcrumb
-          return prev.slice(0, exists + 1);
-        } else {
-          return [...prev, { id: folderId, name: folderName }];
+    if (folderId === null) {
+      setCurrentPath([{ id: null, name: 'Home' }]);
+      return;
+    }
+
+    // Always attempt to reconstruct the full path from allFolders
+    if (allFolders.length > 0) {
+      const path = [];
+      let current = allFolders.find(f => f.id === folderId);
+      
+      if (current) {
+        while (current) {
+          path.unshift({ id: current.id, name: current.name });
+          current = allFolders.find(f => f.id === current.parent_id);
         }
-      });
-    } else if (folderId !== null) {
-      // Need to build path (e.g. if directly jumping)
-      // This requires walking up parents, which might need a new DB function or multiple queries
-      // For now, let's keep it simple: just fetch current folder
-      try {
-        const folder = await getFolder(folderId);
-        if (folder) {
-          // A bit hacky: doesn't build full tree if jumped directly
-          setCurrentPath(prev => [...prev, { id: folder.id, name: folder.name }]);
-        }
-      } catch (e) {
-        console.error(e);
+        path.unshift({ id: null, name: 'Home' });
+        setCurrentPath(path);
+        return;
       }
     }
-  }, [getFolder]);
+
+    // Fallback if allFolders isn't loaded yet or folder not found
+    try {
+      const dbFolder = await getFolder(folderId);
+      if (dbFolder) {
+        // If we can't reconstruct the whole path yet, at least show Home > ... > current
+        // This is a temporary state until allFolders loads
+        setCurrentPath([{ id: null, name: 'Home' }, { id: dbFolder.id, name: dbFolder.name }]);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [allFolders, getFolder]);
 
   const goBack = useCallback(() => {
     if (currentPath.length > 1) {
@@ -101,19 +112,44 @@ export const useExplorer = () => {
       const targetFolder = currentPath[index];
       setCurrentFolderId(targetFolder.id);
       setCurrentPath(currentPath.slice(0, index + 1));
+      setSelectedItems([]); // Clear selection
     }
   }, [currentPath]);
+
+  const toggleSelection = useCallback((id, itemType, isMulti = false) => {
+    setSelectedItems(prev => {
+      const isSelected = prev.some(item => item.id === id && item.itemType === itemType);
+      
+      if (isMulti) {
+        if (isSelected) {
+          return prev.filter(item => !(item.id === id && item.itemType === itemType));
+        } else {
+          return [...prev, { id, itemType }];
+        }
+      } else {
+        return isSelected && prev.length === 1 ? [] : [{ id, itemType }];
+      }
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedItems([]);
+  }, []);
 
   return {
     currentFolderId,
     currentPath,
     items,
+    allFolders,
     isLoading,
     error,
     refreshContents,
     navigateToFolder,
     goBack,
     goToRoot,
-    navigateToPathIndex
+    navigateToPathIndex,
+    selectedItems,
+    toggleSelection,
+    clearSelection
   };
 };

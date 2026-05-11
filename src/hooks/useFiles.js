@@ -97,10 +97,15 @@ export const useFiles = () => {
       setIsLoading(true);
       clearError();
 
+      // Validate telegram_file_id
+      if (!telegramFileId || typeof telegramFileId !== 'string' || telegramFileId.trim() === '') {
+        throw new Error('Invalid file ID: telegram_file_id is required and must be a non-empty string');
+      }
+
       const botToken = import.meta.env.VITE_BOT_TOKEN;
       
       // Download file blob
-      const blob = await downloadFileById(botToken, telegramFileId);
+      const blob = await downloadFileById(botToken, telegramFileId.trim());
       
       // Create a temporary link to download the blob
       const url = window.URL.createObjectURL(blob);
@@ -175,12 +180,77 @@ export const useFiles = () => {
     }
   }, [clearError]);
 
+  const moveFile = useCallback(async (fileId, newFolderId) => {
+    try {
+      setIsLoading(true);
+      clearError();
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('User not authenticated');
+
+      const { data, error: updateError } = await supabase
+        .from('files')
+        .update({ folder_id: newFolderId })
+        .eq('id', fileId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (updateError) throw new Error(`Failed to move file: ${updateError.message}`);
+
+      return data;
+    } catch (err) {
+      setError(err.message);
+      console.error('moveFile error:', err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [clearError]);
+
+  const copyFile = useCallback(async (file, targetFolderId) => {
+    try {
+      setIsLoading(true);
+      clearError();
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('User not authenticated');
+
+      const { data, error: insertError } = await supabase
+        .from('files')
+        .insert({
+          user_id: user.id,
+          name: `${file.name.split('.').slice(0, -1).join('.') || file.name} - Copy.${file.file_type}`,
+          file_type: file.file_type,
+          telegram_file_id: file.telegram_file_id,
+          folder_id: targetFolderId,
+          size_bytes: file.size_bytes,
+          mime_type: file.mime_type,
+          others: file.others || {}
+        })
+        .select()
+        .single();
+
+      if (insertError) throw new Error(`Failed to copy file: ${insertError.message}`);
+
+      return data;
+    } catch (err) {
+      setError(err.message);
+      console.error('copyFile error:', err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [clearError]);
+
   return {
     getFilesInFolder,
     uploadFile,
     downloadFile,
     renameFile,
     deleteFile,
+    moveFile,
+    copyFile,
     isLoading,
     error,
     clearError

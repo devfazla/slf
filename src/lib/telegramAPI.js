@@ -99,10 +99,19 @@ export async function sendDocument(botToken, chatId, file) {
  */
 export async function getFile(botToken, fileId) {
   try {
+    // Validate inputs
+    if (!botToken || typeof botToken !== 'string' || botToken.trim() === '') {
+      throw new Error('Bot token is required and must be a non-empty string');
+    }
+    
+    if (!fileId || typeof fileId !== 'string' || fileId.trim() === '') {
+      throw new Error('File ID is required and must be a non-empty string');
+    }
+
     const result = await callProxy({
       botToken,
       method: 'getFile',
-      fileId
+      fileId: fileId.trim()
     });
 
     if (!result.ok) {
@@ -180,7 +189,21 @@ export async function downloadFile(botToken, filePath) {
  */
 export async function downloadFileById(botToken, fileId) {
   try {
-    const fileInfo = await getFile(botToken, fileId);
+    // Validate inputs
+    if (!botToken || typeof botToken !== 'string' || botToken.trim() === '') {
+      throw new Error('Bot token is required and must be a non-empty string');
+    }
+    
+    if (!fileId || typeof fileId !== 'string' || fileId.trim() === '') {
+      throw new Error('File ID is required and must be a non-empty string');
+    }
+
+    const fileInfo = await getFile(botToken, fileId.trim());
+    
+    if (!fileInfo || !fileInfo.file_path) {
+      throw new Error('Invalid file info received from Telegram');
+    }
+    
     return await downloadFile(botToken, fileInfo.file_path);
   } catch (error) {
     console.error('Error downloading file by ID from Telegram:', error);
